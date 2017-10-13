@@ -1,0 +1,71 @@
+#
+# Build
+#
+
+if {[have_spec odroid_xu]} {
+	puts "Run script does not support this platform."
+	exit 0
+}
+
+set build_components {
+	core init
+	drivers/timer
+}
+
+source ${genode_dir}/repos/base/run/platform_drv.inc
+
+append_platform_drv_build_components
+
+build $build_components
+
+create_boot_directory
+
+#
+# Generate config
+#
+
+append config {
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+	</parent-provides>
+	<default-route>
+	</default-route>
+	<default caps="100"/>}
+
+append config {
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+                <route>
+                    <service name="PD"><parent/></service>
+                    <service name="CPU"><parent/></service>
+                    <service name="LOG"><parent/></service>
+                    <service name="ROM"><parent/></service>
+                </route>
+	</start>
+</config>}
+
+install_config $config
+
+#
+# Boot modules
+#
+
+# generic modules
+set boot_modules {
+	core ld.lib.so init
+	timer
+}
+
+build_boot_image $boot_modules
+
+
+run_genode_until forever
