@@ -14,6 +14,7 @@ set build_components {
         drivers/input
         drivers/usb
         drivers/ahci
+        drivers/uart
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -161,6 +162,21 @@ append config {
                 <service name="Platform"><child name="platform_drv"/></service>
             </route>
         </start>
+
+        <!-- ### UART driver ### -->
+        <start name="uart_drv">
+            <resource name="RAM" quantum="2M"/>
+            <provides>
+                <service name="Terminal"/>
+                <service name="Uart"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
 </config>
 }
 
@@ -179,6 +195,7 @@ set boot_modules {
         usb_drv
         fb_drv
         ahci_drv
+        uart_drv
 }
 
 append_platform_drv_boot_modules
