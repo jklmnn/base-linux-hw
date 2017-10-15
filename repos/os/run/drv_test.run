@@ -45,6 +45,8 @@ append config {
 #append_platform_drv_config
 
 append config {
+
+        <!-- ### Timer ### -->
 	<start name="timer">
             <resource name="RAM" quantum="1M"/>
             <provides>
@@ -58,6 +60,7 @@ append config {
             </route>
 	</start>
 
+        <!-- ### Boot framebuffer ### -->
         <start name="fb_boot_drv">
             <resource name="RAM" quantum="4M"/>
             <provides>
@@ -73,6 +76,7 @@ append config {
             </route>
         </start>
 
+        <!-- ### Platform driver ### -->
         <start name="acpi_report_rom">
             <binary name="report_rom"/>
             <resource name="RAM" quantum="2M"/>
@@ -104,6 +108,18 @@ append config {
                 <service name="ROM"><parent/></service>
             </route>
         </start>
+
+        <!-- ### PS2 driver ### -->
+        <start name="ps2_drv">
+            <resource name="RAM" quantum="1M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+            </route> 
+        </start>
 </config>
 }
 
@@ -118,6 +134,7 @@ set boot_modules {
 	core ld.lib.so init
 	timer
         fb_boot_drv
+        ps2_drv
 }
 
 append_platform_drv_boot_modules
