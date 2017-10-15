@@ -10,6 +10,7 @@ if {[have_spec odroid_xu]} {
 set build_components {
 	core init
 	drivers/timer
+        drivers/framebuffer
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -42,15 +43,33 @@ append config {
 
 append config {
 	<start name="timer">
-		<resource name="RAM" quantum="1M"/>
-		<provides><service name="Timer"/></provides>
-                <route>
-                    <service name="PD"><parent/></service>
-                    <service name="CPU"><parent/></service>
-                    <service name="LOG"><parent/></service>
-                    <service name="ROM"><parent/></service>
-                </route>
+            <resource name="RAM" quantum="1M"/>
+            <provides>
+                <service name="Timer"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
 	</start>
+
+        <start name="fb_boot_drv">
+            <resource name="RAM" quantum="4M"/>
+            <provides>
+                <service name="Framebuffer"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Timer"><child name="timer"/></service>
+                <service name="IO_MEM"><parent/></service>
+            </route>
+        </start>
+
 </config>}
 
 install_config $config
@@ -63,6 +82,7 @@ install_config $config
 set boot_modules {
 	core ld.lib.so init
 	timer
+        fb_boot_drv
 }
 
 build_boot_image $boot_modules
