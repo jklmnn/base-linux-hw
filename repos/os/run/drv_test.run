@@ -13,6 +13,7 @@ set build_components {
         drivers/framebuffer
         drivers/input
         drivers/usb
+        drivers/ahci
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -147,6 +148,19 @@ append config {
                 <service name="Platform"><child name="platform_drv"/></service>
             </route>
         </start>
+
+        <!-- ### AHCI driver ### -->
+        <start name="ahci_drv">
+            <resource name="RAM" quantum="10M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Timer"><child name="timer"/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+            </route>
+        </start>
 </config>
 }
 
@@ -164,6 +178,7 @@ set boot_modules {
         ps2_drv
         usb_drv
         fb_drv
+        ahci_drv
 }
 
 append_platform_drv_boot_modules
