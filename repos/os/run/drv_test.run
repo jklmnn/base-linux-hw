@@ -16,6 +16,7 @@ set build_components {
         drivers/ahci
         drivers/uart
         drivers/rtc
+        drivers/wifi lib/vfs/jitterentropy server/dynamic_rom
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -193,6 +194,68 @@ append config {
                 <service name="IO_PORT"><parent/></service>
             </route>
         </start>
+
+        <!-- ### WiFi driver ### -->
+        <start name="wifi_report_rom">
+            <binary name="report_rom"/>
+            <resource name="RAM" quantum="2M"/>
+            <provides>
+                <service name="ROM"/>
+                <service name="Report"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="wifi_config_rom">
+            <binary name="dynamic_rom"/>
+            <resource name="RAM" quantum="4M"/>
+            <provides>
+                <service name="ROM"/>
+            </provides>
+            <config verbose="yes">
+                <rom name="wlan_configuration"/>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="wifi_drv" caps="220">
+            <resource name="RAM" quantum="32M"/>
+            <config ld_verbose="yes" verbose="yes" connected_scan_interval="30">
+                <libc stdout="/dev/log" stderr="/dev/log" rtc="/dev/rtc">
+                    <vfs>
+                        <dir name="dev">
+                            <log/>
+                            <rtc/>
+                            <jitterentropy name="random"/>
+                            <jitterentropy name="urandom"/>
+                        </dir>
+                        <dir name="config">
+                            <ram/>
+                        </dir>
+                    </vfs>
+                </libc>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Rtc"><child name="rtc_drv"/></service>
+                <service name="Report"><child name="wifi_report_rom"/></service>
+                <service name="ROM"><child name="wifi_config_rom"/></service>
+            </route>
+        </start>
+
 </config>
 }
 
@@ -213,6 +276,9 @@ set boot_modules {
         ahci_drv
         uart_drv
         rtc_drv
+        wifi_drv libc.lib.so libcrypto.lib.so libssl.lib.so wifi.lib.so\
+        wpa_driver_nl80211.lib.so wpa_supplicant.lib.so vfs_jitterentropy.lib.so\
+        dynamic_rom
 }
 
 append_platform_drv_boot_modules
