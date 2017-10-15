@@ -15,6 +15,7 @@ set build_components {
         drivers/usb
         drivers/ahci
         drivers/uart
+        drivers/rtc
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -177,6 +178,21 @@ append config {
                 <service name="ROM"><parent/></service>
             </route>
         </start>
+
+        <!-- ### RTC driver ### -->
+        <start name="rtc_drv">
+            <resource name="RAM" quantum="1M"/>
+            <provides>
+                <service name="Rtc"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="IO_PORT"><parent/></service>
+            </route>
+        </start>
 </config>
 }
 
@@ -196,6 +212,7 @@ set boot_modules {
         fb_drv
         ahci_drv
         uart_drv
+        rtc_drv
 }
 
 append_platform_drv_boot_modules
