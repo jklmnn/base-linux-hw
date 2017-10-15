@@ -18,6 +18,7 @@ set build_components {
         drivers/rtc
         drivers/wifi lib/vfs/jitterentropy server/dynamic_rom
         drivers/audio
+        drivers/framebuffer/intel server/report_rom server/ram_fs server/fs_rom
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -257,6 +258,7 @@ append config {
             </route>
         </start>
 
+        <!-- ### audio driver ### -->
         <start name="audio_drv">
             <resource name="RAM" quantum="8M"/>
             <provides>
@@ -270,6 +272,91 @@ append config {
                 <service name="RM"><parent/></service>
                 <service name="Timer"><child name="timer"/></service>
                 <service name="Platform"><child name="platform_drv"/></service>
+            </route>
+        </start>
+
+        <!-- ### intel i915 driver ### -->
+        <start name="intel_fb_rom" priority="-1">
+            <binary name="report_rom"/>
+            <resource name="RAM" quantum="2M"/>
+            <provides>
+                <service name="Report"/>
+                <service name="ROM"/>
+            </provides>
+            <config verbose="yes">
+                <policy label="intel_fb_controller -> connectors" report="intel_fb_drv -> connectors"/>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="config_fs" priority="-1">
+            <binary name="ram_fs"/>
+            <resource name="RAM" quantum="8M"/>
+            <provides>
+                <service name="File_system"/>
+            </provides>
+            <config>
+                <content>
+                    <inline name="fb_drv.config">
+                        <config>
+                            <report connectors="yes"/>
+                        </config>
+                    </inline>
+                </content>
+                <policy label_prefix="config_rom" root="/"/>
+                <policy label_prefix="intel_fb_controller" root="/" writeable="yes"/>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="config_rom" priority="-1">
+            <binary name="fs_rom"/>
+            <resource name="RAM" quantum="4M"/>
+            <provides>
+                <service name="ROM"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="File_system"><child name="config_fs"/></service>
+            </route>
+        </start>
+
+        <start name="intel_fb_drv" caps="200">
+            <resource name="RAM" quantum="20M"/>
+            <provides>
+                <service name="Framebuffer"/>
+            </provides>
+            <configfile name="fb_drv.config"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM" label="fb_drv.config"><child name="config_rom"/></service>
+                <service name="Report"><child name="intel_fb_rom"/></service>
+            </route>
+        </start>
+
+        <start name="intel_fb_controller" priority="-1">
+            <resource name="RAM" quantum="1M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM" label="connectors"><child name="intel_fb_rom"/></service>
+                <service name="File_system"><child name="config_fs"/></service>
             </route>
         </start>
 </config>
@@ -296,6 +383,7 @@ set boot_modules {
         wpa_driver_nl80211.lib.so wpa_supplicant.lib.so vfs_jitterentropy.lib.so\
         dynamic_rom
         audio_drv
+        intel_fb_drv intel_fb_controller report_rom ram_fs fs_rom
 }
 
 append_platform_drv_boot_modules
