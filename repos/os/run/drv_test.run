@@ -11,6 +11,8 @@ set build_components {
 	core init
 	drivers/timer
         drivers/framebuffer
+        drivers/input
+        drivers/usb
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -120,6 +122,19 @@ append config {
                 <service name="Platform"><child name="platform_drv"/></service>
             </route> 
         </start>
+
+        <!-- ### USB driver ### -->
+        <start name="usb_drv" caps="120">
+            <resource name="RAM" quantum="12M"/>
+            <config ehci="yes" uhci="yes" xhci="no"><hid/></config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+            </route>
+        </start>
 </config>
 }
 
@@ -135,6 +150,7 @@ set boot_modules {
 	timer
         fb_boot_drv
         ps2_drv
+        usb_drv
 }
 
 append_platform_drv_boot_modules
