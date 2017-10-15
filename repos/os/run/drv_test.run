@@ -17,6 +17,7 @@ set build_components {
         drivers/uart
         drivers/rtc
         drivers/wifi lib/vfs/jitterentropy server/dynamic_rom
+        drivers/audio
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -256,6 +257,21 @@ append config {
             </route>
         </start>
 
+        <start name="audio_drv">
+            <resource name="RAM" quantum="8M"/>
+            <provides>
+                <service name="Audio_out"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="RM"><parent/></service>
+                <service name="Timer"><child name="timer"/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+            </route>
+        </start>
 </config>
 }
 
@@ -279,6 +295,7 @@ set boot_modules {
         wifi_drv libc.lib.so libcrypto.lib.so libssl.lib.so wifi.lib.so\
         wpa_driver_nl80211.lib.so wpa_supplicant.lib.so vfs_jitterentropy.lib.so\
         dynamic_rom
+        audio_drv
 }
 
 append_platform_drv_boot_modules
