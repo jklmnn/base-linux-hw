@@ -38,8 +38,11 @@ append config {
 		<service name="LOG"/>
 	</parent-provides>
 	<default-route>
+		<!--<any-service> <parent/> <any-child/> </any-service>-->
 	</default-route>
 	<default caps="100"/>}
+
+#append_platform_drv_config
 
 append config {
 	<start name="timer">
@@ -70,7 +73,39 @@ append config {
             </route>
         </start>
 
-</config>}
+        <start name="acpi_report_rom">
+            <binary name="report_rom"/>
+            <resource name="RAM" quantum="2M"/>
+            <provides>
+                <service name="ROM"/>
+                <service name="Report"/>
+            </provides>
+            <config>
+                <policy label="platform_drv -> acpi" report="acpi_drv -> acpi"/>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="platform_drv" caps="800">
+            <resource name="RAM" quantum="4M"/>
+            <provides>
+                <service name="Platform"/>
+            </provides>
+            <route>
+                <service name="ROM" label="acpi"><child name="acpi_report_rom"/></service>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+</config>
+}
 
 install_config $config
 
@@ -84,6 +119,8 @@ set boot_modules {
 	timer
         fb_boot_drv
 }
+
+append_platform_drv_boot_modules
 
 build_boot_image $boot_modules
 
