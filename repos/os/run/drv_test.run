@@ -135,6 +135,18 @@ append config {
                 <service name="Platform"><child name="platform_drv"/></service>
             </route>
         </start>
+
+        <!-- ### FB driver ### -->
+        <start name="fb_drv">
+            <resource name="RAM" quantum="4M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+            </route>
+        </start>
 </config>
 }
 
@@ -151,6 +163,7 @@ set boot_modules {
         fb_boot_drv
         ps2_drv
         usb_drv
+        fb_drv
 }
 
 append_platform_drv_boot_modules
