@@ -1,57 +1,28 @@
-\RequirePackage[ngerman=ngerman-x-latest]{hyphsubst}
-\documentclass[ngerman]{tudscrreprt}
+\documentclass[
+a4paper,
+12pt,
+notitlepage,
+parskip=half,
+DIV=11,
+]{scrartcl}
 
-\usepackage{selinput}\SelectInputMappings{adieresis={ä},germandbls={ß}}
+\usepackage[ngerman]{babel}
+\usepackage[utf8]{inputenx}
 \usepackage[T1]{fontenc}
-\usepackage{babel}
-
-\usepackage[activate={true,nocompatibility},final,tracking=true,kerning=true,spacing=true,factor=1100,stretch=10,shrink=10,babel]{microtype}
-
-\usepackage{numprint}
 \usepackage{hyperref}
-\usepackage{pdfpages}
-\usepackage{caption}
-\usepackage{minted}
-\setminted{
-	linenos,
-	autogobble,
-	breaklines,
-}
-\usepackage{float}
-\usepackage{multicol}
-\usepackage[numbers]{natbib}
-
-%\newenvironment{longlisting}{\captionsetup{type=listing}}{}
-\storeareas\PotraitArea% speichert den aktuellen Satzspiegel
-
-\author{Max Mustermann}
-\title{Microkernelization of Linux}
-
 
 \begin{document}
-		\npthousandsep{\ensuremath\,\allowbreak}
-	\faculty{Fakultät Informatik}
-	\institute{Institut für Systemarchitektur}
-	\chair{Lehrstuhl für Datenschutz und Datensicherheit}
-	\author{
-		Max Mustermann
-		\matriculationnumber{1234567}
-		\dateofbirth{01.01.1990}
-		\placeofbirth{Musterstadt}
-		\matriculationyear{2010}
-	}
-	\title{Microkernelization of Linux}
-	\thesis{studienarbeit}
-	\supervisor{...}
-	\professor{...}
-	\date{\today}
-	\makecover
-	\maketitle
-	
-	\confirmation
-	
-	\tableofcontents
-	
-	
-	\chapter{Einleitung}
+\section{Introduction}
+\section{Integration into Genode}
+	\subsection{Copy base-linux}
+	\subsection{Include base-linux}
+	\subsection{Extend base-linux}
+\section{Available drivers}
+\section{Core}
+\section{Driver interface implementation}
+	\subsection{IO Ports}
+	\subsection{Memory mapped IO}
+	\subsection{Interrupts}
+\section{Tested drivers}
+\section{Conclusion}
 \end{document}
