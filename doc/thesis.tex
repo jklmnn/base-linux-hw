@@ -11,7 +11,12 @@ DIV=11,
 \usepackage[T1]{fontenc}
 \usepackage{hyperref}
 
+\usepackage[numbers]{natbib}
+\usepackage{cite}
+
 \begin{document}
+	
+	\tableofcontents
 	
 	\chapter{Background}
 	\chapter{Present situation} %%related work
@@ -39,4 +44,8 @@ DIV=11,
 	\chapter{Implemented design}
 	\chapter{Evaluation}
 	\chapter{Conclusion}
+	
+	\bibliographystyle{unsrtnat}
+	\bibliography{sources}
+	
 \end{document}
