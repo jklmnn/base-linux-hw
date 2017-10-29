@@ -4,7 +4,7 @@ a4paper,
 notitlepage,
 parskip=half,
 DIV=11,
-]{scrartcl}
+]{scrbook}
 
 \usepackage[ngerman]{babel}
 \usepackage[utf8]{inputenx}
@@ -12,32 +12,31 @@ DIV=11,
 \usepackage{hyperref}
 
 \begin{document}
-\section{Introduction}
-\section{Integration into Genode}
-The integration into Genode is done by creating a base directory.
-This is used to build a core binary which then is executed by the kernel.
-Since there is already a core that is able to use the Linux kernel it would be redundant to rewrite these parts.
-Reusing the already available code can be done in three different ways.
-	\subsection{Copy base-linux}
-	The simplest way to build upon base-linux is creating a copy it in a new base directory.
-	The advantage of this approach lies in the fact that there is, beside including the new directory, no need to modify upstream code.
-	On the other hand this leads to code duplication and any updates of base-linux probably need to be ported to its modified copy.
-	\subsection{Include base-linux}
-	Creating a new base directory and including the needed contents from base-linux via Makefile fragments.
-	While this would include the advantages of the copy based approach there is less to no code duplication.
-	The disadvantage here is the complexity due to the build system that does not provide a standard way to include parts of other base directories.
-	\subsection{Extend base-linux}
-	To prevent both code duplication and complex includes the already existing base directory could be used and extended.
-	While this approach seems to be easier it has two caveats.
-	Since it requires modifications of the original base-linux core the current functionality needs to be maintained.
-	This can be done either by creating a hybrid core that is able to run like the current one and on a bare Linux kernel or a switch needs to be added that chooses the target on build time.
-	Additionally this code needs to be brought upstream as it cannot be plugged into the source tree like a separate base directory.
-\section{Available drivers}
-\section{Core}
-\section{Driver interface implementation}
-	\subsection{IO Ports}
-	\subsection{Memory mapped IO}
-	\subsection{Interrupts}
-\section{Tested drivers}
-\section{Conclusion}
+	
+	\chapter{Background}
+	\chapter{Present situation} %%related work
+	\chapter{Required steps} %%what needs to be done
+	\chapter{Planned design}
+		\section{Integration into Genode}
+		The integration into Genode is done by creating a base directory.
+		This is used to build a core binary which then is executed by the kernel.
+		Since there is already a core that is able to use the Linux kernel it would be redundant to rewrite these parts.
+		Reusing the already available code can be done in three different ways.
+		\subsection{Copy base-linux}
+		The simplest way to build upon base-linux is creating a copy it in a new base directory.
+		The advantage of this approach lies in the fact that there is, beside including the new directory, no need to modify upstream code.
+		On the other hand this leads to code duplication and any updates of base-linux probably need to be ported to its modified copy.
+		\subsection{Include base-linux}
+		Creating a new base directory and including the needed contents from base-linux via Makefile fragments.
+		While this would include the advantages of the copy based approach there is less to no code duplication.
+		The disadvantage here is the complexity due to the build system that does not provide a standard way to include parts of other base directories.
+		\subsection{Extend base-linux}
+		To prevent both code duplication and complex includes the already existing base directory could be used and extended.
+		While this approach seems to be easier it has two caveats.
+		Since it requires modifications of the original base-linux core the current functionality needs to be maintained.
+		This can be done either by creating a hybrid core that is able to run like the current one and on a bare Linux kernel or a switch needs to be added that chooses the target on build time.
+		Additionally this code needs to be brought upstream as it cannot be plugged into the source tree like a separate base directory.
+	\chapter{Implemented design}
+	\chapter{Evaluation}
+	\chapter{Conclusion}
 \end{document}
