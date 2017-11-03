@@ -33,7 +33,6 @@ struct Main {
     Main(Genode::Env &env) : _env(env)
     {
         Genode::log("--- IO_Port keyboard LED test ---");
-        /*
         while(1){
             Genode::log("on");
             while(_iop.inb(STAT));
@@ -47,7 +46,6 @@ struct Main {
             while(_iop.inb(STAT));
             _iop.outb(BASE, 0x0);
         }
-        */
     }
 
 };
