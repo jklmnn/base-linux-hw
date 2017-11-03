@@ -1,12 +1,19 @@
 # RTC test
 
-build {
+if {[have_spec linux]} {
+    puts "LINUX"
+}
+
+set build_components {
     core
     init
     drivers/timer
     test/kbled
-    lib/initramfs
 }
+
+lappend_if [have_spec linux] build_components lib/initramfs
+
+build $build_components
 
 create_boot_directory
 
@@ -36,15 +43,18 @@ install_config {
 </config>
 }
 
-build_boot_image {
+set boot_modules {
     core
     ld.lib.so 
     init 
     timer
-    initramfs
     keyboard_led-test
 }
 
-append qemu_args " -nographic  "
+lappend_if [have_spec linux] boot_modules initramfs
+
+build_boot_image $boot_modules
+
+#append qemu_args " -nographic  "
 
 run_genode_until forever
