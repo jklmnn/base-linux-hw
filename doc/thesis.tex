@@ -19,7 +19,7 @@ DIV=11,
 	
 	\tableofcontents
 	
-	\chapter{Background}
+	\chapter{State of the art}
 		At the present time we are surrounded by devices that run complex software and operating systems.
 		The number of these devices is still rising and their complexity is growing by the increasing amount computational resources, functionalities and interfaces.
 		Also many of these devices are taking over important tasks such as smart locks or even cardiac pacemakers.
@@ -38,6 +38,8 @@ DIV=11,
 		This reduction comes at the cost of flexibility at runtime which often lets vendors choose more complex but easy to use and configure systems.
 		These often have a large trusted computing base (TCB) of multiple million lines of code.
 		This leads to the question how this contradiction between flexibility and security can be resolved.
+		
+		\section{Genode}
 		
 		Genode aims to solve this problem through multiple ways.
 		Instead of a monolithic kernel it uses microkernels.
@@ -78,14 +80,29 @@ DIV=11,
 		This is a good approach for applications but is also limited.
 		Some resources cannot be used since the Linux kernel doesn't provide them to the user space, for example memory mapped IO or direct memory access.
 		To develop and debug native Genode device drivers the kernel needs to act as a microkernel and provide access to these resources in Genode.
-		Microkernelizing Linux is the goal of this thesis and consists of two parts.
-		The functional part is to provide the system resources such as direct memory access, IO ports or memory mapped IO.
-		To use this on different platforms Genode should also boot directly on a Linux kernel as init process.
-		When the functional part is done Linux should be stripped down to reduce the trusted computing base.
 		
-	\chapter{Present situation} %%related work
-	\chapter{Required steps} %%what needs to be done
-	\chapter{Planned design}
+		\section{User space drivers on Linux}
+		
+		There have already been different approaches on using suer space drivers on Linux.
+		A, in the Linux world widely known, project is Filesystem in Userspace (FUSE).
+		It's target is to provide users with the ability to use custom file systems without the need to require root privileges or edit kernel code.
+		To achieve this FUSE consists of two parts, a kernel module and a user space library.
+		The library communicates with the kernel module to provide the necessary functionality to the user.
+		While this does not access any hardware resources it shows a concept how kernel resources can be accessed from the user space. \citep{fuse}
+		
+		Another approach is Userspace I/O (UIO).
+		UIO addresses industrial systems that often require I/O cards which only need some mapped memory and interrupts.
+		These cards are available as device files on Linux which provide access to the address space of each device.
+		Contrary to FUSE UIO drivers require a small kernel module that deploys access to hardware resources.
+		But the driver logic can be implemented in user space.
+		This gives a number of advantages for both the programmer and the user.
+		Instead of kernel modules these drivers can use many tools and libraries that are not available in the kernel.
+		Also bugs and crashes of the driver do not influence the kernel itself.
+		While updates of kernel modules often require the recompilation of the kernel or at least a reboot of the system updates of these drivers can be done more easily. \citep{uio}
+		
+		
+	\chapter{Requirements} %%what needs to be done
+	\chapter{Design}
 		\section{Integration into Genode}
 		The integration into Genode is done by creating a base directory.
 		This is used to build a core binary which then is executed by the kernel.
@@ -105,7 +122,7 @@ DIV=11,
 		Since it requires modifications of the original base-linux core the current functionality needs to be maintained.
 		This can be done either by creating a hybrid core that is able to run like the current one and on a bare Linux kernel or a switch needs to be added that chooses the target on build time.
 		Additionally this code needs to be brought upstream as it cannot be plugged into the source tree like a separate base directory.
-	\chapter{Implemented design}
+	\chapter{Implementation}
 	\chapter{Evaluation}
 	\chapter{Conclusion}
 	
