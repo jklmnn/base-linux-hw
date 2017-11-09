@@ -100,6 +100,15 @@ DIV=11,
 		Also bugs and crashes of the driver do not influence the kernel itself.
 		While updates of kernel modules often require the recompilation of the kernel or at least a reboot of the system updates of these drivers can be done more easily. \citep{uio}
 		
+		\section{Rump kernels}
+		A rump kernel provides a platform to use component based drivers.
+		It presents an instance of a set of components that runs in the user space.
+		Drivers on top of a rump kernel only need to interface with it and not the underlying kernel.
+		That makes this concept portable to highly different platforms such as monolithic or micro kernels.
+		This is achieved by stripping away all unneeded components of a kernel and only leaving those required for drivers to work.
+		At the lower part of the kernel exists a small and well defined portability layer to interface with the underlying environment.
+		These concepts were implemented first by the NetBSD project. \citep{bsd_rump}\citep{fosdem_rump}\citep{rump}
+		
 		
 	\chapter{Requirements} %%what needs to be done
 	\chapter{Design}
