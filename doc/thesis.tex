@@ -15,6 +15,9 @@ DIV=11,
 \usepackage[numbers]{natbib}
 \usepackage{cite}
 
+\input{genode-manual/manual/img/tikz-preamble.tex}
+\input{genode-manual/manual/img/tikz-common.tex}
+
 \begin{document}
 	
 	\tableofcontents
@@ -55,8 +58,7 @@ DIV=11,
 		
 		\begin{figure}
 			\centering
-			\def\svgwidth{\columnwidth}
-			\input{tcb.pdf_tex}
+			\input{genode-manual/manual/img/app_specific_tcb.tikz}
 			\caption{Application based TCB \citep{genode}}
 			\label{fig:tcb_tree}
 		\end{figure}
