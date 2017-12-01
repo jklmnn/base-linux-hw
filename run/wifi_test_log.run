@@ -339,4 +339,5 @@ append_platform_drv_boot_modules
 build_boot_image $boot_modules
 
 append qemu_args " -m 512 "
+#append qemu_args " -device pci-assign,host=00:00.0"
 run_genode_until forever
