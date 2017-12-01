@@ -10,10 +10,6 @@ set build_components {
 	server/nitpicker server/nit_fb
 	server/terminal server/terminal_log test/nitpicker app/pointer
         drivers/rtc
-        drivers/uart
-        drivers/ahci
-        drivers/usb
-        drivers/audio
         test/framebuffer server/report_rom server/fs_rom server/ram_fs
         drivers/wifi lib/vfs/jitterentropy server/dynamic_rom
 }
@@ -183,8 +179,8 @@ append config {
         <start name="acpi_drv"  caps="400" >
 		<resource name="RAM" quantum="3M"/>
 		<route>
-			<service name="IO_MEM"> <parent/> </service>
-			<service name="LOG">    <parent/> </service>
+                    	<service name="IO_MEM"> <parent/> </service>
+                        <service name="LOG"><child name="terminal_log"/></service>
 			<service name="PD">     <parent/> </service>
 			<service name="RM">     <parent/> </service>
 			<service name="CPU">    <parent/> </service>
@@ -204,7 +200,7 @@ append config {
 			<policy label="platform_drv -> acpi" report="acpi_drv -> acpi"/>
 		</config>
 		<route>
-			<service name="LOG"> <parent/> </service>
+                        <service name="LOG"><child name="terminal_log"/></service>
 			<service name="PD">     <parent/> </service>
 			<service name="CPU">    <parent/> </service>
 			<service name="ROM">    <parent/> </service>
@@ -223,7 +219,7 @@ append config {
 			<service name="PD">     <parent/> </service>
 			<service name="CPU">    <parent/> </service>
                         <service name="ROM">    <parent/> </service>
-                        <!-- used by usb -->
+                        <!-- used by wifi -->
                         <service name="IO_PORT"><parent/></service>
                         <service name="IO_MEM"><parent/></service>
                         <service name="IRQ"><parent/></service>
@@ -256,7 +252,7 @@ append config {
             <route>
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
-                <service name="LOG"><parent/></service>
+                <service name="LOG"><child name="terminal_log"/></service>
                 <service name="ROM"><parent/></service>
             </route>
         </start>
@@ -268,12 +264,20 @@ append config {
                 <service name="ROM"/>
             </provides>
             <config verbose="yes">
-                <rom name="wlan_configuration"/>
+                <rom name="wlan_configuration">
+                    <inline description="DISCONNECT"> <selected_network/> </inline>
+                    <sleep milliseconds="10000"/> <!-- 10 seconds -->
+                    <inline description="CONNECT">}
+append config "<selected_network ssid=\"$::env(GENODE_WIFI_SSID)\" protection=\"WPA-PSK\" psk=\"$::env(GENODE_WIFI_PSK)\"/>"
+append config {
+                    </inline>
+                    <sleep milliseconds="300000"/> <!-- 5 minutes -->
+                </rom>
             </config>
             <route>
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
-                <service name="LOG"><parent/></service>
+                <service name="LOG"><child name="terminal_log"/></service>
                 <service name="ROM"><parent/></service>
                 <service name="Timer"><child name="timer"/></service>
             </route>
@@ -324,16 +328,10 @@ set boot_modules {
         terminal terminal_log
         fb_boot_drv dummy_input_drv
         rtc_drv
-        uart_drv
-        ahci_drv
-        ps2_drv
-        usb_drv
-        fb_drv
-        audio_drv
-        intel_fb_drv intel_fb_controller report_rom fs_rom ram_fs
         wifi_drv libc.lib.so libcrypto.lib.so libssl.lib.so wifi.lib.so
         wpa_driver_nl80211.lib.so wpa_supplicant.lib.so vfs_jitterentropy.lib.so
         dynamic_rom
+	iwlwifi-7260-16.ucode
 }
 
 append_platform_drv_boot_modules
