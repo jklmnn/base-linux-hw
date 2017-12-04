@@ -203,11 +203,11 @@ append config {
 			<service name="PD">     <parent/> </service>
 			<service name="CPU">    <parent/> </service>
                         <service name="ROM">    <parent/> </service>
-                        <!-- used by ahci -->
+                        <!-- used by fb -->
                         <service name="IO_PORT"><parent/></service>
+                        <!--
                         <service name="IO_MEM"><parent/></service>
                         <service name="IRQ"><parent/></service>
-                        <!--
                         -->
 		</route>
 		<config>
@@ -225,6 +225,8 @@ append config {
                         </policy>
 		</config>
 	</start>
+
+        <!-- /platform driver -->
 
         <!-- framebuffer driver -->
 
