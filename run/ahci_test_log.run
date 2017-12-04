@@ -10,6 +10,7 @@ set build_components {
 	server/nitpicker server/nit_fb
 	server/terminal server/terminal_log test/nitpicker app/pointer
         drivers/ahci
+        test/blk/bench
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -47,7 +48,7 @@ append config {
                 <service name="ROM"><parent/></service>
             </route>
 	</start>
-	
+        <!--	
         <start name="dummy_input_drv">
             <resource name="RAM" quantum="1M"/>
             <provides><service name="Input"/></provides>
@@ -126,7 +127,7 @@ append config {
             <resource name="RAM" quantum="3M"/>
             <provides><service name="Terminal"/></provides>
             <config>
-                <!-- supported built-in font sizes are 8, 12, 16, 24 and 36 -->
+                --><!-- supported built-in font sizes are 8, 12, 16, 24 and 36 --><!--
                 <font size="8" />
             </config>
             <route>
@@ -151,7 +152,7 @@ append config {
 		<service name="Terminal">  <child name="terminal"/> </service>
             </route>
         </start>
-
+-->
         <!-- /log core -->
         
         <!-- platform driver -->
@@ -195,7 +196,8 @@ append config {
 		<route>
 			<service name="ROM" label="system"> <child name="acpi_report_rom"/> </service>
 			<service name="ROM" label="acpi"> <child name="acpi_report_rom"/> </service>
-                        <service name="LOG"><child name="terminal_log"/></service>
+                        <!--<service name="LOG"><child name="terminal_log"/></service>-->
+                        <service name="LOG"><parent/></service>
 			<service name="PD">     <parent/> </service>
 			<service name="CPU">    <parent/> </service>
                         <service name="ROM">    <parent/> </service>
@@ -223,23 +225,34 @@ append config {
 	</start>
 
         <!-- ahci driver -->
-        
-        <start name="ahci_drv">
-            <resource name="RAM" quantum="10M"/>
-            <provides>
-                <service name="Block"/>
-            </provides>
-            <config atapi="yes">
-                <report ports="yes"/>
+
+	<start name="ahci_drv">
+            <resource name="RAM" quantum="10M" />
+            <provides><service name="Block" /></provides>
+            <config>
+                <policy label_prefix="test-ahci" device="0" writeable="no" />
             </config>
+            <route> 
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+                <service name="Timer"><child name="timer"/></service>
+                <service name="IO_MEM"><parent/></service>
+            </route>
+	</start>
+
+	<start name="test-ahci">
+            <binary name="test-blk-bench" />
+            <resource name="RAM" quantum="5M" />
             <route>
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
-                <service name="LOG"><child name="terminal_log"/></service>
+                <service name="LOG"><parent/></service>
                 <service name="ROM"><parent/></service>
+                <service name="Block"><child name="ahci_drv"/></service>
                 <service name="Timer"><child name="timer"/></service>
-                <service name="Platform"><child name="platform_drv"/></service>
-                <service name="IO_MEM"><parent/></service>
             </route>
         </start>
         
@@ -256,6 +269,7 @@ set boot_modules {
         terminal terminal_log
         fb_boot_drv dummy_input_drv
         ahci_drv
+        test-blk-bench
 }
 
 append_platform_drv_boot_modules
@@ -263,4 +277,7 @@ append_platform_drv_boot_modules
 build_boot_image $boot_modules
 
 append qemu_args " -m 512 "
+append qemu_args " -drive id=disk,file=bin/ext2.raw,format=raw,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -boot d"
+append qemu_args " -drive id=cd,file=[run_dir]/../ahci_bench.iso,if=none,media=cdrom -device ide-cd,drive=cd,bus=ahci.1"
+
 run_genode_until forever
