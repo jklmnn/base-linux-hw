@@ -18,6 +18,11 @@ append_platform_drv_build_components
 
 build $build_components
 
+set mke2fs [check_installed mke2fs]
+set dd     [check_installed dd]
+exec -ignorestderr $dd if=/dev/zero of=bin/ext2.raw bs=1M count=16
+exec -ignorestderr $mke2fs -F bin/ext2.raw
+
 create_boot_directory
 
 append config {
@@ -48,7 +53,7 @@ append config {
                 <service name="ROM"><parent/></service>
             </route>
 	</start>
-        <!--	
+        
         <start name="dummy_input_drv">
             <resource name="RAM" quantum="1M"/>
             <provides><service name="Input"/></provides>
@@ -61,6 +66,7 @@ append config {
 	</start>
 	<alias name="input_drv" child="dummy_input_drv"/>
 
+        <!--
         <start name="fb_boot_drv">
             <resource name="RAM" quantum="16M"/>
             <provides>
@@ -75,6 +81,8 @@ append config {
                 <service name="IO_MEM"><parent/></service>
             </route>
         </start>
+        -->
+
 	<start name="nitpicker">
             <resource name="RAM" quantum="1M"/>
             <provides><service name="Nitpicker"/></provides>
@@ -86,7 +94,7 @@ append config {
             </config>
             <route>
                 <service name="Input">       <child name="input_drv"/> </service>
-                <service name="Framebuffer"> <child name="fb_boot_drv"/>    </service>
+                <service name="Framebuffer"> <child name="fb_drv"/>    </service>
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
                 <service name="LOG"><parent/></service>
@@ -127,7 +135,7 @@ append config {
             <resource name="RAM" quantum="3M"/>
             <provides><service name="Terminal"/></provides>
             <config>
-                --><!-- supported built-in font sizes are 8, 12, 16, 24 and 36 --><!--
+                <!-- supported built-in font sizes are 8, 12, 16, 24 and 36 -->
                 <font size="8" />
             </config>
             <route>
@@ -152,7 +160,7 @@ append config {
 		<service name="Terminal">  <child name="terminal"/> </service>
             </route>
         </start>
--->
+        
         <!-- /log core -->
         
         <!-- platform driver -->
@@ -223,6 +231,29 @@ append config {
                         </policy>
 		</config>
 	</start>
+        
+        <!-- /platform driver -->
+        
+        <!-- framebuffer driver -->
+
+        <start name="fb_drv">
+            <resource name="RAM" quantum="4M"/>
+            <provides>
+                <service name="Framebuffer"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+                <service name="IO_PORT"><parent/></service>
+                <service name="IO_MEM"><parent/></service>
+                <service name="Timer"><child name="timer"/></service>
+            </route>
+        </start>
+
+        <!-- /framebuffer driver -->
 
         <!-- ahci driver -->
 
@@ -235,7 +266,7 @@ append config {
             <route> 
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
-                <service name="LOG"><parent/></service>
+                <service name="LOG"><child name="terminal_log"/></service>
                 <service name="ROM"><parent/></service>
                 <service name="Platform"><child name="platform_drv"/></service>
                 <service name="Timer"><child name="timer"/></service>
@@ -249,7 +280,7 @@ append config {
             <route>
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
-                <service name="LOG"><parent/></service>
+                <service name="LOG"><child name="terminal_log"/></service>
                 <service name="ROM"><parent/></service>
                 <service name="Block"><child name="ahci_drv"/></service>
                 <service name="Timer"><child name="timer"/></service>
@@ -267,7 +298,7 @@ set boot_modules {
 	core init ld.lib.so
 	timer nitpicker pointer testnit nit_fb 
         terminal terminal_log
-        fb_boot_drv dummy_input_drv
+        fb_drv dummy_input_drv
         ahci_drv
         test-blk-bench
 }
@@ -278,6 +309,6 @@ build_boot_image $boot_modules
 
 append qemu_args " -m 512 "
 append qemu_args " -drive id=disk,file=bin/ext2.raw,format=raw,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -boot d"
-append qemu_args " -drive id=cd,file=[run_dir]/../ahci_bench.iso,if=none,media=cdrom -device ide-cd,drive=cd,bus=ahci.1"
+append qemu_args " -drive id=cd,file=[run_dir]/../ahci_test_log.iso,if=none,media=cdrom -device ide-cd,drive=cd,bus=ahci.1"
 
 run_genode_until forever
