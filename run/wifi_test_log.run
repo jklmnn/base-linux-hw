@@ -12,6 +12,7 @@ set build_components {
         drivers/rtc
         test/framebuffer server/report_rom server/fs_rom server/ram_fs
         drivers/wifi lib/vfs/jitterentropy server/dynamic_rom
+        app/log_core_kernel
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -240,6 +241,18 @@ append config {
 		</config>
 	</start>
 
+        <start name="log_core_kernel">
+            <resource name="RAM" quantum="10M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><child name="terminal_log"/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Timer"><child name="timer"/></service>
+            </route>
+        </start>
+
+
         <!-- intel wifi driver -->
         
         <start name="wifi_report_rom">
@@ -331,7 +344,8 @@ set boot_modules {
         wifi_drv libc.lib.so libcrypto.lib.so libssl.lib.so wifi.lib.so
         wpa_driver_nl80211.lib.so wpa_supplicant.lib.so vfs_jitterentropy.lib.so
         dynamic_rom
-	iwlwifi-7260-16.ucode
+        iwlwifi-7260-16.ucode
+        log_core_kernel
 }
 
 append_platform_drv_boot_modules
