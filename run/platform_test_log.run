@@ -1,0 +1,126 @@
+#
+# \brief  Showcases terminal_log server on Yoga 900
+# \author Alexander Senier
+# \date   2016-09-17
+#
+
+set build_components {
+    core init
+    drivers/platform drivers/acpi server/report_rom
+}
+
+lappend_if [have_spec linux] build_components lib/initramfs
+
+source ${genode_dir}/repos/base/run/platform_drv.inc
+
+build $build_components
+
+create_boot_directory
+
+append config {
+<config>
+	<parent-provides>
+            <service name="ROM"/>
+            <service name="RAM"/>
+            <service name="IRQ"/>
+            <service name="IO_MEM"/>
+            <service name="IO_PORT"/>
+            <service name="PD"/>
+            <service name="RM"/>
+            <service name="CPU"/>
+            <service name="LOG"/>
+	</parent-provides>
+	<default-route/>
+        <default caps="250"/>
+
+        <!-- platform driver -->
+
+        <start name="acpi_drv"  caps="400" >
+		<resource name="RAM" quantum="3M"/>
+		<route>
+			<service name="IO_MEM"> <parent/> </service>
+			<service name="LOG">    <parent/> </service>
+			<service name="PD">     <parent/> </service>
+			<service name="RM">     <parent/> </service>
+			<service name="CPU">    <parent/> </service>
+			<service name="ROM">    <parent/> </service>
+			<service name="Report"> <child name="acpi_report_rom"/> </service>
+			<service name="ROM" label="platform_info"> <parent/> </service>
+		</route>
+	</start>
+	<start name="acpi_report_rom" >
+		<binary name="report_rom"/>
+		<resource name="RAM" quantum="2M"/>
+		<provides>
+			<service name="ROM" />
+			<service name="Report" />
+		</provides>
+		<config>
+			<policy label="platform_drv -> acpi" report="acpi_drv -> acpi"/>
+		</config>
+		<route>
+			<service name="LOG"> <parent/> </service>
+			<service name="PD">     <parent/> </service>
+			<service name="CPU">    <parent/> </service>
+			<service name="ROM">    <parent/> </service>
+		</route>
+	</start>
+	<start name="platform_drv"  caps="800">
+		<resource name="RAM" quantum="4M" constrain_phys="yes"/>
+		<provides>
+			<service name="Platform"/>
+			<service name="Acpi"/>
+		</provides>
+		<route>
+			<service name="ROM" label="system"> <child name="acpi_report_rom"/> </service>
+			<service name="ROM" label="acpi"> <child name="acpi_report_rom"/> </service>
+                        <!--<service name="LOG"><child name="terminal_log"/></service>-->
+                        <service name="LOG"><parent/></service>
+			<service name="PD">     <parent/> </service>
+			<service name="CPU">    <parent/> </service>
+                        <service name="ROM">    <parent/> </service>
+                        <service name="IO_PORT"><parent/></service>
+                        <!--
+                        <service name="IO_MEM"><parent/></service>
+                        <service name="IRQ"><parent/></service>
+                        -->
+		</route>
+		<config>
+                        <policy label_prefix="ps2_drv">  <device name="PS2"/> </policy>
+			<policy label_prefix="nic_drv">  <pci class="ETHERNET"/> </policy>
+			<policy label_prefix="fb_drv">   <pci class="VGA"/> </policy>
+                        <policy label_prefix="wifi_drv"> <pci class="WIFI"/> </policy>
+                        <policy label_prefix="usb_drv">  <pci class="USB"/> </policy>
+                        <policy label_prefix="ahci_drv"> <pci class="AHCI"/> </policy>
+			<policy label_prefix="audio_drv"> <pci class="AUDIO"/> <pci class="HDAUDIO"/> </policy>
+			<policy label_prefix="intel_fb_drv" irq_mode="nomsi">
+				<pci class="VGA"/>
+				<pci bus="0" device="0" function="0"/>
+				<pci class="ISABRIDGE"/>
+                        </policy>
+		</config>
+	</start>
+
+        <!-- /platform driver -->
+</config>
+}
+
+install_config $config
+
+# generic modules
+set boot_modules {
+    core init ld.lib.so
+    platform_drv acpi_drv report_rom
+}
+
+lappend_if [have_spec linux] boot_modules initramfs
+
+# since platform_info is not provided by the kernel we have to provide it manually.
+# the simplest solution would be putting a file containing <platform_info/> to bin/platform_info
+lappend_if [have_spec linux] boot_modules platform_info
+
+build_boot_image $boot_modules
+
+append qemu_args " -m 512 "
+
+run_genode_until forever
