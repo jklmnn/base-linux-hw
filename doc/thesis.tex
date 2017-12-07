@@ -112,6 +112,14 @@ DIV=11,
 		At the lower part of the kernel exists a small and well defined portability layer to interface with the underlying environment.
 		These concepts were implemented first by the NetBSD project. \citep{bsd_rump}\citep{fosdem_rump}\citep{rump}
 		
+		Rump applications and drivers are created using the so called Hypercall API.
+		There are two main parts of this API.
+		The first one are basic calls for applications such as those for allocating memory or using threads.
+		The second is about handling I/O operations and is splitted into a virtual and a physical part.
+		The virtualized calls access services provided by the host operating system such as network interfaces and protocols.
+		For hardware drivers the physical hypercalls are more interesting.
+		While those are referenced in the platforms description where also bare hardware is mentioned as a supported platform there was no reference to the actual hypercall API for physical operations. \citep{rump_man} \citep{rump_platform}
+		
 		
 	\chapter{Requirements} %%what needs to be done
 	\chapter{Design}
