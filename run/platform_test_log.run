@@ -6,7 +6,7 @@
 
 set build_components {
     core init
-    drivers/platform drivers/acpi server/report_rom
+    drivers/platform
 }
 
 lappend_if [have_spec linux] build_components lib/initramfs
@@ -34,47 +34,13 @@ append config {
         <default caps="250"/>
 
         <!-- platform driver -->
-
-        <start name="acpi_drv"  caps="400" >
-		<resource name="RAM" quantum="3M"/>
-		<route>
-			<service name="IO_MEM"> <parent/> </service>
-			<service name="LOG">    <parent/> </service>
-			<service name="PD">     <parent/> </service>
-			<service name="RM">     <parent/> </service>
-			<service name="CPU">    <parent/> </service>
-			<service name="ROM">    <parent/> </service>
-			<service name="Report"> <child name="acpi_report_rom"/> </service>
-			<service name="ROM" label="platform_info"> <parent/> </service>
-		</route>
-	</start>
-	<start name="acpi_report_rom" >
-		<binary name="report_rom"/>
-		<resource name="RAM" quantum="2M"/>
-		<provides>
-			<service name="ROM" />
-			<service name="Report" />
-		</provides>
-		<config>
-			<policy label="platform_drv -> acpi" report="acpi_drv -> acpi"/>
-		</config>
-		<route>
-			<service name="LOG"> <parent/> </service>
-			<service name="PD">     <parent/> </service>
-			<service name="CPU">    <parent/> </service>
-			<service name="ROM">    <parent/> </service>
-		</route>
-	</start>
-	<start name="platform_drv"  caps="800">
+        
+        <start name="platform_drv"  caps="800">
 		<resource name="RAM" quantum="4M" constrain_phys="yes"/>
 		<provides>
 			<service name="Platform"/>
-			<service name="Acpi"/>
 		</provides>
-		<route>
-			<service name="ROM" label="system"> <child name="acpi_report_rom"/> </service>
-			<service name="ROM" label="acpi"> <child name="acpi_report_rom"/> </service>
-                        <!--<service name="LOG"><child name="terminal_log"/></service>-->
+                <route>
                         <service name="LOG"><parent/></service>
 			<service name="PD">     <parent/> </service>
 			<service name="CPU">    <parent/> </service>
@@ -85,7 +51,7 @@ append config {
                         <service name="IRQ"><parent/></service>
                         -->
 		</route>
-		<config>
+		<config acpi="no" verbose="yes">
                         <policy label_prefix="ps2_drv">  <device name="PS2"/> </policy>
 			<policy label_prefix="nic_drv">  <pci class="ETHERNET"/> </policy>
 			<policy label_prefix="fb_drv">   <pci class="VGA"/> </policy>
@@ -110,7 +76,7 @@ install_config $config
 # generic modules
 set boot_modules {
     core init ld.lib.so
-    platform_drv acpi_drv report_rom
+    platform_drv
 }
 
 lappend_if [have_spec linux] boot_modules initramfs
