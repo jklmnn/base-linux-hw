@@ -77,7 +77,25 @@ append config {
                 <service name="IO_MEM"><parent/></service>
             </route>
         </start>
-	<start name="nitpicker">
+        
+        <start name="fb_drv">
+            <resource name="RAM" quantum="4M"/>
+            <provides>
+                <service name="Framebuffer"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+                <service name="IO_PORT"><parent/></service>
+                <service name="IO_MEM"><parent/></service>
+                <service name="Timer"><child name="timer"/></service>
+            </route>
+        </start>
+        
+        <start name="nitpicker">
             <resource name="RAM" quantum="1M"/>
             <provides><service name="Nitpicker"/></provides>
             <config>
@@ -88,7 +106,7 @@ append config {
             </config>
             <route>
                 <service name="Input">       <child name="input_drv"/> </service>
-                <service name="Framebuffer"> <child name="fb_boot_drv"/>    </service>
+                <service name="Framebuffer"> <child name="fb_drv"/>    </service>
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
                 <service name="LOG"><parent/></service>
@@ -167,7 +185,7 @@ append config {
             <route>
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
-                <service name="LOG"><child name="terminal_log"/></service>
+                <service name="LOG"><parent/></service>
                 <service name="ROM"><parent/></service>
                 <service name="IO_PORT"><parent/></service>
             </route>
@@ -181,7 +199,7 @@ append config {
 		<resource name="RAM" quantum="3M"/>
 		<route>
                     	<service name="IO_MEM"> <parent/> </service>
-                        <service name="LOG"><child name="terminal_log"/></service>
+                        <service name="LOG"><parent/></service>
 			<service name="PD">     <parent/> </service>
 			<service name="RM">     <parent/> </service>
 			<service name="CPU">    <parent/> </service>
@@ -201,7 +219,7 @@ append config {
 			<policy label="platform_drv -> acpi" report="acpi_drv -> acpi"/>
 		</config>
 		<route>
-                        <service name="LOG"><child name="terminal_log"/></service>
+                        <service name="LOG"><parent/></service>
 			<service name="PD">     <parent/> </service>
 			<service name="CPU">    <parent/> </service>
 			<service name="ROM">    <parent/> </service>
@@ -216,7 +234,7 @@ append config {
 		<route>
 			<service name="ROM" label="system"> <child name="acpi_report_rom"/> </service>
 			<service name="ROM" label="acpi"> <child name="acpi_report_rom"/> </service>
-                        <service name="LOG"><child name="terminal_log"/></service>
+                        <service name="LOG"><parent/></service>
 			<service name="PD">     <parent/> </service>
 			<service name="CPU">    <parent/> </service>
                         <service name="ROM">    <parent/> </service>
@@ -265,7 +283,8 @@ append config {
             <route>
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
-                <service name="LOG"><child name="terminal_log"/></service>
+                <!--<service name="LOG"><child name="terminal_log"/></service>-->
+                <service name="LOG"><parent/></service>
                 <service name="ROM"><parent/></service>
             </route>
         </start>
@@ -290,7 +309,8 @@ append config {
             <route>
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
-                <service name="LOG"><child name="terminal_log"/></service>
+                <!--<service name="LOG"><child name="terminal_log"/></service>-->
+                <service name="LOG"><parent/></service>
                 <service name="ROM"><parent/></service>
                 <service name="Timer"><child name="timer"/></service>
             </route>
@@ -316,7 +336,8 @@ append config {
             <route>
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
-                <service name="LOG"><child name="terminal_log"/></service>
+                <!--<service name="LOG"><child name="terminal_log"/></service>-->
+                <service name="LOG"><parent/></service>
                 <service name="ROM" label="wlan_configuration"><child name="wifi_config_rom"/></service>
                 <service name="ROM"><parent/></service>
                 <service name="Rtc"><child name="rtc_drv"/></service>
@@ -339,7 +360,7 @@ set boot_modules {
 	core init ld.lib.so
 	timer nitpicker pointer testnit nit_fb 
         terminal terminal_log
-        fb_boot_drv dummy_input_drv
+        fb_boot_drv fb_drv dummy_input_drv
         rtc_drv
         wifi_drv libc.lib.so libcrypto.lib.so libssl.lib.so wifi.lib.so
         wpa_driver_nl80211.lib.so wpa_supplicant.lib.so vfs_jitterentropy.lib.so
