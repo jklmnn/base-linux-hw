@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/x86 4.9.65 Kernel Configuration
+# Linux/x86_64 4.9.65 Kernel Configuration
 #
 CONFIG_64BIT=y
 CONFIG_X86_64=y
@@ -4971,7 +4971,7 @@ CONFIG_FB_ARC=m
 CONFIG_FB_VGA16=m
 CONFIG_FB_UVESA=m
 CONFIG_FB_VESA=y
-CONFIG_FB_EFI=y
+# CONFIG_FB_EFI is not set
 CONFIG_FB_N411=m
 CONFIG_FB_HGA=m
 # CONFIG_FB_OPENCORES is not set
