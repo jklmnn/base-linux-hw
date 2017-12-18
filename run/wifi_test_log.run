@@ -106,7 +106,7 @@ append config {
             </config>
             <route>
                 <service name="Input">       <child name="input_drv"/> </service>
-                <service name="Framebuffer"> <child name="fb_drv"/>    </service>
+                <service name="Framebuffer"> <child name="fb_boot_drv"/>    </service>
                 <service name="PD"><parent/></service>
                 <service name="CPU"><parent/></service>
                 <service name="LOG"><parent/></service>
