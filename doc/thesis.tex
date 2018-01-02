@@ -104,8 +104,11 @@ DIV=11,
 		While updates of kernel modules often require the recompilation of the kernel or at least a reboot of the system updates of these drivers can be done more easily. \citep{uio}
 		
 		\section{Rump kernels}
-		A rump kernel provides a platform to use component based drivers.
-		It presents an instance of a set of components that runs in the user space.
+		A rump kernel provides a lightweight environment for drivers on top of an anykernel.
+		The flexible anykernel architecture allows kernels to run in different configurations or modes.
+		They can be created from a monolithic kernel with a moderate effort.
+		While they provide an interface for rump based drivers they also preserve their monolithic properties and driver stacks. \citep{kantee}
+		
 		Drivers on top of a rump kernel only need to interface with it and not the underlying kernel.
 		That makes this concept portable to highly different platforms such as monolithic or micro kernels.
 		This is achieved by stripping away all unneeded components of a kernel and only leaving those required for drivers to work.
@@ -116,10 +119,25 @@ DIV=11,
 		There are two main parts of this API.
 		The first one are basic calls for applications such as those for allocating memory or using threads.
 		The second is about handling I/O operations and is splitted into a virtual and a physical part.
-		The virtualized calls access services provided by the host operating system such as network interfaces and protocols.
-		For hardware drivers the physical hypercalls are more interesting.
-		While those are referenced in the platforms description where also bare hardware is mentioned as a supported platform there was no reference to the actual hypercall API for physical operations. \citep{rump_man} \citep{rump_platform}
+		The virtualized calls access services provided by the host operating system such as network interfaces and protocols. \citep{rump_man} \citep{rump_platform}
 		
+		While system calls and access to the host systems interfaces is defined straightforward direct hardware access is not.
+		With one exception the rump kernel does not have support to directly map physical memory.
+		These mappings are usually represented as files on the host system.
+		While these files could be used to map memory into the rump kernel they would also limit the platforms and environments where it can be hosted.
+		The only exception to this are vnodes which are inode representations in memory.
+		The approach of the rump kernel to solve this problem is to allocate a block of memory and copy the contents of the memory mapped by the host system back and forth.
+		This works only because the vnode pages can be accessed by a single consumer at a time.
+		Therefore this approach is inapplicable for memory mapped IO or volatile memory. \citep{kantee}
+		
+		Another important aspect of hardware drivers are interrupts.
+		Hardware interrupts usually preempt the CPU which is not supported by the rump kernel.
+		Instead they are implemented as host threads which then schedule the handler inside the rump kernel accordingly. \citep{kantee}
+		
+		While these properties speak against hardware drivers in the first place there is one example of a hardware device driver for USB devices described.
+		Yet this example operates on a higher level than direct access to hardware resources.
+		The BSD kernel makes USB devices accessible to the user space via \texttt{ugen} the USB generic device support.
+		The rump kernel implementation of the USB driver allows to configure the access to specific USB devices at compile time. \citep{kantee} \citep{ugen}
 		
 	\chapter{Requirements} %%what needs to be done
 	\chapter{Design}
