@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/mount.h>
 
 int insmod(char *path)
 {
@@ -29,10 +30,15 @@ int
 main (int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 {
     char *args = "core";
-    printf("loading hwiodev module\n");
+    
+    printf("preparing environment for Genode\n");
+    if(mount("none", "/dev", "devtmpfs", 0, ""))
+        perror("mount");
+    
     if(insmod("/hwio.ko")){
         perror("insmod");
     }
+
     printf("loading Genode on Linux\n");
     if (chdir("/genode")){
         perror("failed to chdir into /genode");
