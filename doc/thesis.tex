@@ -140,27 +140,136 @@ DIV=11,
 		The rump kernel implementation of the USB driver allows to configure the access to specific USB devices at compile time. \citep{kantee} \citep{ugen}
 		
 	\chapter{Requirements} %%what needs to be done
+	
+	\section{IO Ports}
+	
+	\section{Memory mapped IO}
+	
+	\section{Interrupts}
+	
+	
 	\chapter{Design}
+	
 		\section{Integration into Genode}
 		The integration into Genode is done by creating a base directory.
 		This is used to build a core binary which then is executed by the kernel.
 		Since there is already a core that is able to use the Linux kernel it would be redundant to rewrite these parts.
 		Reusing the already available code can be done in three different ways.
+	
 		\subsection{Copy base-linux}
 		The simplest way to build upon base-linux is creating a copy it in a new base directory.
 		The advantage of this approach lies in the fact that there is, beside including the new directory, no need to modify upstream code.
 		On the other hand this leads to code duplication and any updates of base-linux probably need to be ported to its modified copy.
+	
 		\subsection{Include base-linux}
 		Creating a new base directory and including the needed contents from base-linux via Makefile fragments.
 		While this would include the advantages of the copy based approach there is less to no code duplication.
 		The disadvantage here is the complexity due to the build system that does not provide a standard way to include parts of other base directories.
+	
 		\subsection{Extend base-linux}
 		To prevent both code duplication and complex includes the already existing base directory could be used and extended.
 		While this approach seems to be easier it has two caveats.
 		Since it requires modifications of the original base-linux core the current functionality needs to be maintained.
 		This can be done either by creating a hybrid core that is able to run like the current one and on a bare Linux kernel or a switch needs to be added that chooses the target on build time.
 		Additionally this code needs to be brought upstream as it cannot be plugged into the source tree like a separate base directory.
+		
+		\section{IO Ports}
+		
+		The implementation of of the \texttt{IO\_Port} session on Linux can be done straight forward.
+		This is because IO ports are already available in the user space.
+		The only requirement to use them is access to priveledge level 3 which can be achieved with root access on Linux.
+		There are several methods that can be used and need to be implemented to use these ports.
+		An example are \texttt{unsigned char inb(unsigned short int port)} and \texttt{void outb(unsigned char value, unsigned short int port)} which are used to respectively read and write a single byte to a specific port address.
+		To use these functions the permissions need to be granted first.
+		This can be done either by \texttt{int iopl(int level)} or \texttt{int ioperm(unsigned long from, unsigned long num, int turn\_on)} which are explained subsequently. \citep{outb} \citep{ioperm} \citep{iopl}
+				
+		\subsection{iopl}
+		
+		The first option, \texttt{iopl} grants the calling process a specific privilege level.
+		On Linux these levels range from zero to three where zero is the level of a normal process and 3 is the highest one.
+		These privileges are also inherited by child processes created by \texttt{fork} or \texttt{execve}. \citep{iopl}
+		
+		On Genode core would call \texttt{iopl} once it starts and creates the \texttt{IO\_Port} session.
+		A component would access these ports through the session interface which also regulates the port ranges.
+		
+		\subsection{ioperm}
+		
+		\texttt{ioperm} is a more fine grained option to get the required privileges.
+		Instead of \texttt{iopl} it does not give the calling process a higher privilege level but only access to a certain range of IO ports.
+		This needs to be specified on the call by passing the starting port and the amount of ports that are accessed consecutively.
+		It also does not allow processes to access overlapping port ranges. \citep{ioperm}
+		
+		The approach on Genode is to call this syscall when a client connects to the \texttt{IO\_Port} session with the required port ranges.
+		This would not collide with the checks implemented in Genode but would provide the enforcement of these constraints on kernel level.
+		
+		\section{Memory mapped IO}
+		
+		While memory mapped IO is much more important that IO ports Linux does not provide a good interface to use it from the user space.
+		It only has a \texttt{mem} device that has all physical memory mapped into a file.
+		while this is an easy method to map memory into a user space process it has some disadvantages especially in regard to Genodes security and process isolation.
+		If those disadvantages shall be avoided a custom adoption of kernel space needs to be done.
+		This goal can be achieved in multiple ways.
+		
+		Also while there are multiple already existing solutions to write user space drivers these usually either pull dependencies behind or are too complex for the goal of a minimized kernel.
+		
+		\subsection{Memory device}
+		
+		The easiest would be using \texttt{/dev/mem} which already has mapped all physical memory into the user space.
+		While on early kernel versions it was possible to access the whole memory current versions have the \texttt{CONFIG\_STRICT\_DEVMEM} configuration option enabled which only allows access to IO memory but not arbitrary RAM.
+		
+		Yet any process that holds a file descriptor can still access all IO ranges and therefore control nearly all hardware devices.
+		This cannot be constrained in any way which is a danger to Genodes process isolation.
+		While only core is able to open the file descriptor and pass it to a component the component needs to map the memory by itself.
+		Since it can map arbitrary regions of memory it would be able to control devices or interfere with other drivers without core having the ability to control or restrict such an action.
+		As this strongly violates the security assumptions this option should only be implemented if any other fails. \citep{devmem} 
+		
+		\subsection{System call}
+		
+		A more fine grained and better controllable solution would be a custom system call.
+		It could be implemented to take the offset and size of the memory region and map it directly into the user space.
+		Also Genode specific attributes could be used since there is no constraint in available functionality.
+		
+		While this is a powerful solution it comes with certain limitations.
+		System calls cannot be added by kernel modules and need to be implemented directly inside the kernel.
+		This does not only require the the kernel to be compiled for each device but also a manual upgrade each time a new version is released.
+		Also a syscall number needs to be chosen that does not collide with any existing one.
+		While this sounds easy in the first place it either requires the number registrated by kernel developers to prevent collisions or to reassign it in future versions.
+		So beside this being a powerful way to enable user space memory mapping it also requires a higher maintenance over time. \citep{syscall}
+		
+		\subsection{SysFS}
+		
+		The Linux \texttt{sysfs} which is located in \texttt{/sys} is a common way to enable communication between user space applications and the kernel.
+		This is usually done by accessing files in \texttt{/sys}.
+		An implementation of such a driver would provide a file that the arguments are placed into; for example the space separated name, offset and size of the regarded memory region.
+		It would then place an correspondingly named device file into ts directory that the user space process can open and map. \citep{sysfs}
+		
+		As this enables the driver to selectively make memory regions accessible, even to specific users only, this would fit Genodes security model.
+		Core would be responsible to set the correct arguments into the input file and the component could open and map the file according to its capabilities.
+		
+		Yet there are some disadvantages, especially in regards to complexity.
+		Mapping a memory region would need multiple file operations.
+		Also the direct access to files in \texttt{/sys} is disregarded since the structure of the file system can change.
+		To prevent effects of these changes it is recommended to use an abstraction layer such a udev or HAL.
+		These dependencies would furthermore increase the complexity of this approach.
+		Since Genodes \texttt{base-linux} does not depend yet on sysfs it could be removed from the kernel later.
+		That would not be true anymore if this approach was chosen. \citep{sysfs}
+		
+		\subsection{Fnctl}
+		
+		\subsection{Prctl}
+		
+		\subsection{Custom device with ioctl}
+		
+		\section{Interrupts}
+		
+		
 	\chapter{Implementation}
+	
+	\section{IO Ports}
+	
+	\section{Memory mapped IO}
+	
+	
 	\chapter{Evaluation}
 	\chapter{Conclusion}
 	
