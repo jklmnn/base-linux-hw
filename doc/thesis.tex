@@ -23,6 +23,14 @@ DIV=11,
 	\selectlanguage{english}
 	\tableofcontents
 	
+	\chapter{Background} %hardware description
+	
+	\section{IO Ports}
+	
+	\section{MMIO}
+	
+	\section{IRQ}
+	
 	\chapter{State of the art}
 		At the present time we are surrounded by devices that run complex software and operating systems.
 		The number of these devices is still rising and their complexity is growing by the increasing amount computational resources, functionalities and interfaces.
@@ -254,11 +262,33 @@ DIV=11,
 		Since Genodes \texttt{base-linux} does not depend yet on sysfs it could be removed from the kernel later.
 		That would not be true anymore if this approach was chosen. \citep{sysfs}
 		
-		\subsection{Fnctl}
+		\subsection{Fcntl}
+		
+		Another implementation option is the use of \texttt{fcntl} on a file descriptor of \texttt{/dev/mem}.
+		This function is designed to implement custom operation on file descriptor properties such as setting the file status and make the file readable or writeable through this descriptor.
+		It is a multiplexing system call that can perform different operations based on its arguments.
+		In this case all of these are file specific and custom operations are usually of low complexity or derived from already existing ones.
+		Yet it is not clear if the required constraints can be layed upon the file descriptor on \texttt{/dev/mem}. \citep{syscall} \citep{fcntl}
 		
 		\subsection{Prctl}
 		
+		Another option, more process than file centered, is \texttt{prctl} which implements custom operations on processes.
+		It is similar to \texttt{fcntl} in its nature as a system call multiplexer.
+		It implements different operations that manipulate the processes own properties such as thread names.
+		Also custom implementations are recommended to be either rather simple or derived from already existing ones.
+		The idea is to map a specific part of memory directly into the process.
+		However it is questionable if the semantics of mapping memory fit into modifying a processes attributes. \citep{syscall} \citep{prctl}
+		
 		\subsection{Custom device with ioctl}
+		
+		While, except for \texttt{sysfs}, most of these options use methods that were not intended to be used that way this is a partially reimplementation of \texttt{/dev/mem} fixing the issues stated above.
+		The custom device also makes memory mappable to a process via the file descriptor.
+		Yet it supports a custom implemented \texttt{ioctl} that is able to constrain the device accordingly.
+		
+		While \texttt{ioctl} is similar to \texttt{fcntl} it also supports sending and receiving data to and from the device.
+		The data is copied from and to the kernel space accordingly.
+		This and the control over the devices implementation allow a constraint to the memory that can be mapped while on the other hand having no dependencies beside \texttt{/dev}.
+		It also can be built as a kernel module which makes it loadable at run time. \citep{ioctl}
 		
 		\section{Interrupts}
 		
