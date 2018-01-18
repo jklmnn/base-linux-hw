@@ -24,12 +24,68 @@ DIV=11,
 	\tableofcontents
 	
 	\chapter{Background} %hardware description
+
+	Modern System access their hardware through different channels.
+	Which one and how these are used depends on the type of hardware and on the requirements to the system.
+	These are often a high bandwidth to transmit data or a low latency to react on input.
+	Depending on these demands different mechanisms are used.
 	
+	Peripheral devices are often connected via busses such as the PCI (Peripheral Component Interconnect).
+	Those devices can either be user hardware such as graphics card or controller that connect other bus systems or devices.
+	The SATA bus is such an example.
+	While hard drive disks are connected directly to it a controller is necessary that connects it to the PCI bus which again is connected to the CPU.
+	
+	While the amount of different busses is large access to them can be broken down to a few mechanisms.
+	Higher level accessors that enable more distant devices such as the drive mentioned in the example can be broken down to these few.
+	Orders for the driver on the SATA bus are just an abstraction to what needs to be communicated with the SATA controller. \citep{iosystems}
+
 	\section{IO Ports}
 	
-	\section{MMIO}
+	IO ports or port IO is a mechanism used mainly on the Intel x86 architecture.
+	It consists of a hardware bus that is connected directly to the processor and peripheral devices.
+	The ports can be used for bidirectional communication similar to a serial interface.
+	Access is handled through a specific set of instructions that take addresses and data.
+	A special benefit of this mechanism is its atomicity.
+	Instructions are guaranteed to be finished before the execution of their successors.
 	
-	\section{IRQ}
+	There are 2\textsuperscript{16} addressable ports which transmit 8 bit of data per transaction.
+	Consecutive ports can be used to transmit up to 32 bit at once.
+	To make use of this the ports need to be aligned on even addresses (for 16 bit transmissions) or on multiples of four (for 32 bit transmissions).
+	Other alignments are possible but come with a performance loss.
+	
+	On modern systems this mechanism often supports legacy hardware such as PS/2 or a floppy disk controllers.
+	Also many other architectures lack this type of communication and use memory mapped IO which is also increasingly used with Intel x86 hardware.
+	\citep{ioports} \citep{intelmanual}
+	
+	\section{Memory mapped IO}
+	
+	Memory mapped IO is a widely used mechanism to access hardware.
+	It maps hardware registers into the physical address space.
+	From the view of the operating system it looks as it is part of the available RAM.
+	Yet these regions differ in behaviour to conventional registers.
+	Accesses to memory mapped IO cannot be cached as they might have side effects on hardware or other registers.
+	Even reading might influence the device.
+	This is important especially in exception handling where accesses might be repeated.
+	
+	Memory mapped IO is widely used on different architectures as it provides a clear interface and enables the transfer of substantial amounts of data.
+	Also with 64 bit addressing the physical address space is large enough to prevent collisions with conventional RAM.
+	\citep{intelmanual}
+	
+	\section{Interrupts}
+	
+	Interrupts are asynchronous events sent by external devices.
+	Beside the so called interrupt number no further information is transmitted.
+	Also this is a single directional channel.
+	Interrupts are triggered by a device and received by the CPU.
+	
+	When an interrupt occurs the execution of the current task is interrupted by the CPU and a handler procedure is called.
+	The handler is registered to one of the 18 predefined or 224 user defined interrupts.
+	When it is called the only information available is that one of the interrupts it was registered to has been triggered.
+	Any further information needs to be acquired through other channels, for example memory mapped IO. \citep{intelmanual}
+	
+	This mechanism is usually used for devices that wait for events such as keyboards.
+	Instead of checking periodically if a key has been pressed it registers an interrupt that is triggered once a key is pressed.
+	Then the driver can check which key has been pressed and pass this information to the operating system.
 	
 	\chapter{State of the art}
 		At the present time we are surrounded by devices that run complex software and operating systems.
