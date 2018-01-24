@@ -23,6 +23,47 @@ DIV=11,
 	\selectlanguage{english}
 	\tableofcontents
 	
+	\chapter{Introduction}
+	
+	At the present time we are surrounded by devices that run complex software and operating systems.
+	The number of these devices is still rising and their complexity is growing by the increasing amount computational resources, functionalities and interfaces.
+	Also many of these devices are taking over important tasks such as smart locks or even cardiac pacemakers.
+	Since most of these devices are connected to the public Internet they cannot only be accessed by their owners but anyone.
+	
+	These facts raise the question if we can trust these devices.
+	Many cases in the present have shown that nearly all of these devices have security issues.
+	Since the used systems are too complex to guarantee the absence of software errors the common practice is patching these devices when an error has been discovered.
+	Unfortunately the approach of fixing errors has not proven reliable.
+	Updates are often not or only for a short time available and often do not find their way to the end user.
+	
+	A difference to this practice are sectors where manufacturers are liable for the correctness of their products including software parts.
+	This can be achieved by enforcing specific work flows that reduce error probabilities and intensive testing.
+	But also verification with formal and mathematical methods can be used diminish the rate of faults.
+	
+	While this seems to be a solution to the current problems this approach is far from being scalable enough.
+	Comprehensive testing requires a high amount of resources that often is not available or economically reasonable.
+	Also verification requires an even higher effort and for many large projects it is far from being possible.
+	This leads to the question how the high complexity of current applications can be combined with the trustiness of comprehensively tested and verified software.
+	
+	That is the point where component based systems have their use case.
+	They separate the untrusted parts of the software from each other while providing defined ways for them to communicate with each other.
+	The component based system itself does not implement any functionality beside separation and enforcement of policies.
+	This allows a small trusted code base that is able to be verified and tested.
+	
+	The software components themselves do not need to be trusted any more.
+	Due to the separation a fault or security issue does only affect a single component and cannot spread across other applications.
+	To enforce this behaviour through all parts of the system the architecture is based on a micro kernel.
+	
+	Most of the common operating systems use a monolithic kernel.
+	This means that all drivers run in the kernel space.
+	Not only hardware accessing parts are included there but also file systems and networking stacks.
+	This leads to the problem that if only one of these drivers is compromised it can access the whole kernel and therefore the complete system.
+	All security assumptions in the user space are invalid from this point.
+	
+	Micro kernels solve this problem by implementing only the most basic hardware access mechanisms.
+	This keeps their code base small and verifiable.
+	On the other hand drivers run in the user space and profit from the security advantages brought along by the component based system.
+	
 	\chapter{Background} %hardware description
 
 	Modern System access their hardware through different channels.
@@ -88,24 +129,6 @@ DIV=11,
 	Then the driver can check which key has been pressed and pass this information to the operating system.
 	
 	\chapter{State of the art}
-		At the present time we are surrounded by devices that run complex software and operating systems.
-		The number of these devices is still rising and their complexity is growing by the increasing amount computational resources, functionalities and interfaces.
-		Also many of these devices are taking over important tasks such as smart locks or even cardiac pacemakers.
-		Since most of these devices are connected to the public Internet they cannot only be accessed by their owners but anyone.
-		These facts raise the question if we can trust these devices.
-		Many cases in the present have shown that nearly all of these devices have security issues.
-		Since the used systems are too complex to guarantee the absence of software errors the common practice is patching these devices when an error has been discovered.
-		Unfortunately the approach of fixing errors has not proven reliable.
-		Updates are often not or only for a short time available and often do not find their way to the end user.
-		A difference to this practice are sectors where manufacturers are liable for the correctness of their products including software parts.
-		This correctness is achieved by the separation of components and their individual evaluation and verification.
-		The downside of this approach are the high costs, especially for a high amount of components.
-		To reduce the costs multiple functionalities are often combined in one component.
-		To securely separate the functionalities from each other separation kernels are used.
-		Since those need to be secure they only consist of a low complexity and a few thousand lines of code.
-		This reduction comes at the cost of flexibility at runtime which often lets vendors choose more complex but easy to use and configure systems.
-		These often have a large trusted computing base (TCB) of multiple million lines of code.
-		This leads to the question how this contradiction between flexibility and security can be resolved.
 		
 		\section{Genode}
 		
