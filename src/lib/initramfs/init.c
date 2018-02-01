@@ -39,6 +39,11 @@ main (int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
         perror("insmod");
     }
 
+    if(insmod("/platform_info.ko")){
+        perror("platform_info");
+    }
+    close(open("/dev/platform_info", O_RDONLY));
+
     printf("loading Genode on Linux\n");
     if (chdir("/genode")){
         perror("failed to chdir into /genode");
