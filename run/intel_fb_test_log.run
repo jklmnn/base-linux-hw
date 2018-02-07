@@ -1,0 +1,357 @@
+#
+# \brief  Showcases terminal_log server on Yoga 900
+# \author Alexander Senier
+# \date   2016-09-17
+#
+
+set build_components {
+	core init
+	drivers/framebuffer drivers/input drivers/timer
+	server/nitpicker server/nit_fb
+	server/terminal server/terminal_log test/nitpicker app/pointer
+        drivers/rtc
+        test/framebuffer server/report_rom server/fs_rom server/ram_fs
+        app/log_core_kernel
+}
+
+source ${genode_dir}/repos/base/run/platform_drv.inc
+append_platform_drv_build_components
+
+build $build_components
+
+create_boot_directory
+
+append config {
+<config>
+	<parent-provides>
+            <service name="ROM"/>
+            <service name="RAM"/>
+            <service name="IRQ"/>
+            <service name="IO_MEM"/>
+            <service name="IO_PORT"/>
+            <service name="PD"/>
+            <service name="RM"/>
+            <service name="CPU"/>
+            <service name="LOG"/>
+	</parent-provides>
+	<default-route/>
+        <default caps="250"/>
+
+	<start name="timer">
+            <resource name="RAM" quantum="1M"/>
+            <provides><service name="Timer"/></provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+	</start>
+        
+        <!-- log core -->
+	
+        <start name="dummy_input_drv">
+            <resource name="RAM" quantum="1M"/>
+            <provides><service name="Input"/></provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+	</start>
+	<alias name="input_drv" child="dummy_input_drv"/>
+
+        <!--
+        <start name="fb_boot_drv">
+            <resource name="RAM" quantum="16M"/>
+            <provides>
+                <service name="Framebuffer"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+		<service name="Timer">     <child name="timer"/> </service>
+                <service name="IO_MEM"><parent/></service>
+            </route>
+        </start>
+        -->
+
+        <alias name="framebuffer_drv" child="intel_fb_drv"/>
+
+	<start name="nitpicker">
+            <resource name="RAM" quantum="1M"/>
+            <provides><service name="Nitpicker"/></provides>
+            <config>
+                <domain name="pointer" layer="1" content="client" label="no" origin="pointer" />
+                <domain name="default" layer="2" content="client" label="no" focus="click" hover="always" />
+                <policy label="pointer" domain="pointer"/>
+                <default-policy domain="default"/>
+            </config>
+            <route>
+                <service name="Input">       <child name="input_drv"/> </service>
+                <service name="Framebuffer"> <child name="framebuffer_drv"/>    </service>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Timer">     <child name="timer"/> </service>
+            </route>
+	</start>
+
+	<start name="pointer">
+            <resource name="RAM" quantum="1M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+		<service name="Nitpicker"> <child name="nitpicker"/> </service>
+            </route>
+	</start>
+
+	<start name="terminal_fb">
+            <binary name="nit_fb"/>
+            <resource name="RAM" quantum="16M"/>
+            <provides>
+                    <service name="Framebuffer"/>
+                    <service name="Input"/>
+            </provides>
+            <config xpos="0" ypos="0" width="1366" height="768" refresh_rate="25"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+		<service name="Nitpicker"> <child name="nitpicker"/> </service>
+            </route>
+	</start>
+
+	<start name="terminal">
+            <resource name="RAM" quantum="3M"/>
+            <provides><service name="Terminal"/></provides>
+            <config>
+                <!-- supported built-in font sizes are 8, 12, 16, 24 and 36 -->
+                <font size="8" />
+            </config>
+            <route>
+                <service name="Input">       <child name="terminal_fb"/> </service>
+                <service name="Framebuffer"> <child name="terminal_fb"/> </service>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Timer">     <child name="timer"/> </service>
+            </route>
+	</start>
+
+	<start name="terminal_log">
+            <resource name="RAM" quantum="1M"/>
+            <provides><service name="LOG"/></provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+		<service name="Terminal">  <child name="terminal"/> </service>
+            </route>
+        </start>
+        
+        <start name="log_core_kernel">
+            <resource name="RAM" quantum="10M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><child name="terminal_log"/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Timer"><child name="timer"/></service>
+            </route>
+        </start>
+
+        <!-- /log core -->
+        
+        <!-- platform driver -->
+        
+        <start name="acpi_drv"  caps="400" >
+		<resource name="RAM" quantum="3M"/>
+		<route>
+			<service name="IO_MEM"> <parent/> </service>
+			<service name="LOG">    <parent/> </service>
+			<service name="PD">     <parent/> </service>
+			<service name="RM">     <parent/> </service>
+			<service name="CPU">    <parent/> </service>
+			<service name="ROM">    <parent/> </service>
+			<service name="Report"> <child name="acpi_report_rom"/> </service>
+			<service name="ROM" label="platform_info"> <parent/> </service>
+		</route>
+	</start>
+	<start name="acpi_report_rom" >
+		<binary name="report_rom"/>
+		<resource name="RAM" quantum="2M"/>
+		<provides>
+			<service name="ROM" />
+			<service name="Report" />
+		</provides>
+		<config>
+			<policy label="platform_drv -> acpi" report="acpi_drv -> acpi"/>
+		</config>
+		<route>
+			<service name="LOG"> <parent/> </service>
+			<service name="PD">     <parent/> </service>
+			<service name="CPU">    <parent/> </service>
+			<service name="ROM">    <parent/> </service>
+		</route>
+	</start>
+	<start name="platform_drv"  caps="800">
+		<resource name="RAM" quantum="4M" constrain_phys="yes"/>
+		<provides>
+			<service name="Platform"/>
+			<service name="Acpi"/>
+		</provides>
+		<route>
+			<service name="ROM" label="system"> <child name="acpi_report_rom"/> </service>
+			<service name="ROM" label="acpi"> <child name="acpi_report_rom"/> </service>
+                        <service name="LOG"><parent/></service>
+			<service name="PD">     <parent/> </service>
+			<service name="CPU">    <parent/> </service>
+                        <service name="ROM">    <parent/> </service>
+                        <!-- used by intel_fb -->
+                        <service name="IO_PORT"><parent/></service>
+                        <service name="IO_MEM"><parent/></service>
+                        <service name="IRQ"><parent/></service>
+                        <!--
+                        -->
+		</route>
+		<config>
+                        <policy label_prefix="ps2_drv">  <device name="PS2"/> </policy>
+			<policy label_prefix="nic_drv">  <pci class="ETHERNET"/> </policy>
+			<policy label_prefix="fb_drv">   <pci class="VGA"/> </policy>
+                        <policy label_prefix="wifi_drv"> <pci class="WIFI"/> </policy>
+                        <policy label_prefix="usb_drv">  <pci class="USB"/> </policy>
+                        <policy label_prefix="ahci_drv"> <pci class="AHCI"/> </policy>
+			<policy label_prefix="audio_drv"> <pci class="AUDIO"/> <pci class="HDAUDIO"/> </policy>
+			<policy label_prefix="intel_fb_drv" irq_mode="nomsi">
+				<pci class="VGA"/>
+				<pci bus="0" device="0" function="0"/>
+				<pci class="ISABRIDGE"/>
+                        </policy>
+		</config>
+	</start>
+        
+        <!-- i915 driver -->
+
+        <start name="intel_fb_rom">
+            <binary name="report_rom"/>
+            <resource name="RAM" quantum="2M"/>
+            <provides>
+                <service name="Report"/>
+                <service name="ROM"/>
+            </provides>
+            <config verbose="yes">
+                <policy label="intel_fb_controller -> connectors" report="intel_fb_drv -> connectors"/>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="config_fs">
+            <binary name="ram_fs"/>
+            <resource name="RAM" quantum="8M"/>
+            <provides>
+                <service name="File_system"/>
+            </provides>
+            <config>
+                <content>
+                    <inline name="fb_drv.config">
+                        <config>
+                            <report connectors="yes"/>
+                        </config>
+                    </inline>
+                </content>
+                <policy label_prefix="config_rom" root="/"/>
+                <policy label_prefix="intel_fb_controller" root="/" writeable="yes"/>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="config_rom">
+            <binary name="fs_rom"/>
+            <resource name="RAM" quantum="4M"/>
+            <provides>
+                <service name="ROM"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="File_system"><child name="config_fs"/></service>
+            </route>
+        </start>
+
+        <start name="intel_fb_drv" caps="200">
+            <resource name="RAM" quantum="20M"/>
+            <provides>
+                <service name="Framebuffer"/>
+            </provides>
+            <configfile name="fb_drv.config"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM" label="fb_drv.config"><child name="config_rom"/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Report"><child name="intel_fb_rom"/></service>
+                <service name="Timer"><child name="timer"/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+                <service name="RM"><parent/></service>
+                <service name="IO_MEM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="intel_fb_controller">
+            <resource name="RAM" quantum="1M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM" label="connectors"><child name="intel_fb_rom"/></service>
+                <service name="ROM"><parent/></service>
+                <service name="File_system"><child name="config_fs"/></service>
+            </route>
+        </start>
+
+        <!-- /i915 driver -->
+</config>
+}
+
+install_config $config
+
+# generic modules
+set boot_modules {
+	core init ld.lib.so
+	timer nitpicker pointer testnit nit_fb 
+        terminal terminal_log
+        dummy_input_drv
+        rtc_drv
+        intel_fb_drv intel_fb_controller report_rom fs_rom ram_fs test-framebuffer
+        log_core_kernel
+}
+
+append_platform_drv_boot_modules
+
+build_boot_image $boot_modules
+
+append qemu_args " -m 512 "
+run_genode_until forever

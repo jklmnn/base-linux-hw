@@ -1,0 +1,394 @@
+#
+# Build
+#
+
+if {[have_spec odroid_xu]} {
+	puts "Run script does not support this platform."
+	exit 0
+}
+
+set build_components {
+	core init
+	drivers/timer
+        drivers/framebuffer
+        drivers/input
+        drivers/usb
+        drivers/ahci
+        drivers/uart
+        drivers/rtc
+        drivers/wifi lib/vfs/jitterentropy server/dynamic_rom
+        drivers/audio
+        drivers/framebuffer/intel server/report_rom server/ram_fs server/fs_rom
+}
+
+source ${genode_dir}/repos/base/run/platform_drv.inc
+
+append_platform_drv_build_components
+
+build $build_components
+
+create_boot_directory
+
+#
+# Generate config
+#
+
+append config {
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+	</parent-provides>
+	<default-route>
+		<!--<any-service> <parent/> <any-child/> </any-service>-->
+	</default-route>
+	<default caps="100"/>}
+
+#append_platform_drv_config
+
+append config {
+
+        <!-- ### Timer ### -->
+	<start name="timer">
+            <resource name="RAM" quantum="1M"/>
+            <provides>
+                <service name="Timer"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+	</start>
+
+        <!-- ### Boot framebuffer ### -->
+        <start name="fb_boot_drv">
+            <resource name="RAM" quantum="4M"/>
+            <provides>
+                <service name="Framebuffer"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Timer"><child name="timer"/></service>
+                <service name="IO_MEM"><parent/></service>
+            </route>
+        </start>
+
+        <!-- ### Platform driver ### -->
+        <start name="acpi_report_rom">
+            <binary name="report_rom"/>
+            <resource name="RAM" quantum="2M"/>
+            <provides>
+                <service name="ROM"/>
+                <service name="Report"/>
+            </provides>
+            <config>
+                <policy label="platform_drv -> acpi" report="acpi_drv -> acpi"/>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="platform_drv" caps="800">
+            <resource name="RAM" quantum="4M"/>
+            <provides>
+                <service name="Platform"/>
+            </provides>
+            <route>
+                <service name="ROM" label="acpi"><child name="acpi_report_rom"/></service>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <!-- ### PS2 driver ### -->
+        <start name="ps2_drv">
+            <resource name="RAM" quantum="1M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+            </route> 
+        </start>
+
+        <!-- ### USB driver ### -->
+        <start name="usb_drv" caps="120">
+            <resource name="RAM" quantum="12M"/>
+            <config ehci="yes" uhci="yes" xhci="no"><hid/></config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+            </route>
+        </start>
+
+        <!-- ### FB driver ### -->
+        <start name="fb_drv">
+            <resource name="RAM" quantum="4M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+            </route>
+        </start>
+
+        <!-- ### AHCI driver ### -->
+        <start name="ahci_drv">
+            <resource name="RAM" quantum="10M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Timer"><child name="timer"/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+            </route>
+        </start>
+
+        <!-- ### UART driver ### -->
+        <start name="uart_drv">
+            <resource name="RAM" quantum="2M"/>
+            <provides>
+                <service name="Terminal"/>
+                <service name="Uart"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <!-- ### RTC driver ### -->
+        <start name="rtc_drv">
+            <resource name="RAM" quantum="1M"/>
+            <provides>
+                <service name="Rtc"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="IO_PORT"><parent/></service>
+            </route>
+        </start>
+
+        <!-- ### WiFi driver ### -->
+        <start name="wifi_report_rom">
+            <binary name="report_rom"/>
+            <resource name="RAM" quantum="2M"/>
+            <provides>
+                <service name="ROM"/>
+                <service name="Report"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="wifi_config_rom">
+            <binary name="dynamic_rom"/>
+            <resource name="RAM" quantum="4M"/>
+            <provides>
+                <service name="ROM"/>
+            </provides>
+            <config verbose="yes">
+                <rom name="wlan_configuration"/>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="wifi_drv" caps="220">
+            <resource name="RAM" quantum="32M"/>
+            <config ld_verbose="yes" verbose="yes" connected_scan_interval="30">
+                <libc stdout="/dev/log" stderr="/dev/log" rtc="/dev/rtc">
+                    <vfs>
+                        <dir name="dev">
+                            <log/>
+                            <rtc/>
+                            <jitterentropy name="random"/>
+                            <jitterentropy name="urandom"/>
+                        </dir>
+                        <dir name="config">
+                            <ram/>
+                        </dir>
+                    </vfs>
+                </libc>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="Rtc"><child name="rtc_drv"/></service>
+                <service name="Report"><child name="wifi_report_rom"/></service>
+                <service name="ROM"><child name="wifi_config_rom"/></service>
+            </route>
+        </start>
+
+        <!-- ### audio driver ### -->
+        <start name="audio_drv">
+            <resource name="RAM" quantum="8M"/>
+            <provides>
+                <service name="Audio_out"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="RM"><parent/></service>
+                <service name="Timer"><child name="timer"/></service>
+                <service name="Platform"><child name="platform_drv"/></service>
+            </route>
+        </start>
+
+        <!-- ### intel i915 driver ### -->
+        <start name="intel_fb_rom" priority="-1">
+            <binary name="report_rom"/>
+            <resource name="RAM" quantum="2M"/>
+            <provides>
+                <service name="Report"/>
+                <service name="ROM"/>
+            </provides>
+            <config verbose="yes">
+                <policy label="intel_fb_controller -> connectors" report="intel_fb_drv -> connectors"/>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="config_fs" priority="-1">
+            <binary name="ram_fs"/>
+            <resource name="RAM" quantum="8M"/>
+            <provides>
+                <service name="File_system"/>
+            </provides>
+            <config>
+                <content>
+                    <inline name="fb_drv.config">
+                        <config>
+                            <report connectors="yes"/>
+                        </config>
+                    </inline>
+                </content>
+                <policy label_prefix="config_rom" root="/"/>
+                <policy label_prefix="intel_fb_controller" root="/" writeable="yes"/>
+            </config>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+            </route>
+        </start>
+
+        <start name="config_rom" priority="-1">
+            <binary name="fs_rom"/>
+            <resource name="RAM" quantum="4M"/>
+            <provides>
+                <service name="ROM"/>
+            </provides>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM"><parent/></service>
+                <service name="File_system"><child name="config_fs"/></service>
+            </route>
+        </start>
+
+        <start name="intel_fb_drv" caps="200">
+            <resource name="RAM" quantum="20M"/>
+            <provides>
+                <service name="Framebuffer"/>
+            </provides>
+            <configfile name="fb_drv.config"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM" label="fb_drv.config"><child name="config_rom"/></service>
+                <service name="Report"><child name="intel_fb_rom"/></service>
+            </route>
+        </start>
+
+        <start name="intel_fb_controller" priority="-1">
+            <resource name="RAM" quantum="1M"/>
+            <route>
+                <service name="PD"><parent/></service>
+                <service name="CPU"><parent/></service>
+                <service name="LOG"><parent/></service>
+                <service name="ROM" label="connectors"><child name="intel_fb_rom"/></service>
+                <service name="File_system"><child name="config_fs"/></service>
+            </route>
+        </start>
+</config>
+}
+
+install_config $config
+
+#
+# Boot modules
+#
+
+# generic modules
+set boot_modules {
+	core ld.lib.so init
+	timer
+        fb_boot_drv
+        ps2_drv
+        usb_drv
+        fb_drv
+        ahci_drv
+        uart_drv
+        rtc_drv
+        wifi_drv libc.lib.so libcrypto.lib.so libssl.lib.so wifi.lib.so\
+        wpa_driver_nl80211.lib.so wpa_supplicant.lib.so vfs_jitterentropy.lib.so\
+        dynamic_rom
+        audio_drv
+        intel_fb_drv intel_fb_controller report_rom ram_fs fs_rom
+}
+
+append_platform_drv_boot_modules
+
+build_boot_image $boot_modules
+
+
+run_genode_until forever
