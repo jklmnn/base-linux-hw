@@ -60,9 +60,24 @@ DIV=11,
 	This leads to the problem that if only one of these drivers is compromised it can access the whole kernel and therefore the complete system.
 	All security assumptions in the user space are invalid from this point.
 	
-	Micro kernels solve this problem by implementing only the most basic hardware access mechanisms.
-	This keeps their code base small and verifiable.
-	On the other hand drivers run in the user space and profit from the security advantages brought along by the component based system.
+	\section{Micro kernels}
+	
+	Micro kernels solve this problem by implementing only resource managing and the most basic hardware access mechanisms.
+	While monolithic kernels usually have all drivers and many services running in the kernel space micro kernels are reduced to a small set of kernel abstractions.
+	Only this tiny part of the operating system runs in the kernel mode.
+	Any further functionality is provided by services that run in the user space.
+	This results in a loosely coupled structure of the system where communication is done in a client server model. \citep{minix}
+	
+	Yet while many monolithic kernels, such as Linux, support many different hardware architectures most micro kernels only support one.
+	To port a micro kernel based operating system to another architecture the kernel either needs to be replaced or ported itself.
+	The first option often is either not available at all or quite limited as some integral parts of the system need to be adapted to each kernel.
+	The second option also requires high effort or is not feasible at all depending of the properties of the target architecture.
+	
+	An alternative to porting a micro kernel would be using a repurposed monolithic kernel like Linux.
+	While some prerequisites need to be done to run user level drivers the advantage of many already enabled architectures can be used.
+	To stay with the example of Linux there are already many debugging and development tools available that might be missing on the micro kernel.
+	Due to the nature of such a system the drivers developed on Linux can be used also on the micro kernel when it is ported later.
+	This is relevant for hardware drivers as well.
 	
 	\chapter{Background} %hardware description
 
