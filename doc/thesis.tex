@@ -243,12 +243,54 @@ DIV=11,
 		
 	\chapter{Requirements} %%what needs to be done
 	
-	\section{IO Ports}
+		To enable Linux as a micro kernel it needs to provide an interface for user space applications to access hardware resources.
+		While Linux already makes some of these observable or even accessible from the user space those methods lack the access granularity a micro kernel would provide and the operating systems would require.
+		Some of these methods give an all or nothing access to resources which violates the security assumptions micro kernel based systems make.
 	
-	\section{Memory mapped IO}
+		In this thesis for enabling Genode on Linux to support hardware drivers three basic resources need to be available in the user space.
+		Those are IO ports, memory mapped IO and interrupts.
+		Each of these has different properties on Linux so their requirements are evaluated separately from each other.
+		
+		\section{IO Ports}
+		
+		IO ports do not require any special modification to Linux itself as they are already accessible from the user space through a defined API that can be used by user space programs.
+		These are all available through the \texttt{sys/io.h} header which provides syscalls and access functions for this mechanism. \citep{ioperm} \citep{iopl} \citep{outb}
 	
-	\section{Interrupts}
+		\section{Memory mapped IO}
+		
+		There is already a mechanism to access physical memory ranges from the user space on Linux, \texttt{/dev/mem}.
+		This is a special character device that can be used by a user space program to map a physical range of memory into its address space.
+		While this would be sufficient to make things "work" it lacks a more fine grained access control.
+		
+		Any process that is able to open that device and map its memory can access all the available ranges and not only what it is supposed to.
+		In newer kernels this has a small restriction that only IO memory can be mapped.
+		Before it was even possible to access the whole available memory, even that of the kernel and other processes. \citep{devmem}
+		
+		Yet the access to only device memory ranges, but all of them, is still insufficient as a driver should only access the ranges its parent allowed it to.
+		This leads to the requirement of a more constrainable and controllable access mechanism.
 	
+		\section{Interrupts}
+		
+		Especially for input receiving devices such as keyboards or network interface cards interrupts are an important resource.
+		The Linux kernel does not allow to register an interrupt handler in the user space.
+		It is possible to see and observer interrupts in \texttt{/proc/interrupts} yet polling them from this file is not feasible as they are often require a low latency.
+		This leads to the need of a new mechanism that provides user space access and a reasonable latency.
+	
+		\section{Complexity}
+		
+		With security assumptions in mind enabling resource access for the user space is not the only requirement.
+		The Linux kernel is a complex construct with millions of lines of code.
+		To reduce this complexity as much unnecessary functionality as possible needs to be removed.
+		Beside the removal of drivers that are provided by the user space system such as USB and graphics support also other subsystems that usually are not directly visible to the common user need to be taken care of.
+		
+		This is especially important for parts that could be used to implement other requirements.
+		So it needs to be taken care of that nothing depends on those.
+		These systems include \texttt{procfs} and \texttt{sysfs} which many user space interfacing drivers depend on. \citep{sysfs} \citep{procfs}
+		
+		Also some drivers are required to be removed not only because of complexity but their interference with drivers that should run in the user space.
+		While the kernel might even allow multiple entities to access the same range of memory or IO ports this will likely cause errors.
+		Since these mechanisms access hardware resources they are highly volatile which also means that changes made by one driver are visible in another accessing the same device.
+		To prevent this any resource that is used by a user space driver must not be used by the kernel.
 	
 	\chapter{Design}
 	
