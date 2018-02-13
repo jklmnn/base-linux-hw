@@ -83,7 +83,6 @@ lappend_if [have_spec linux] boot_modules initramfs
 
 # since platform_info is not provided by the kernel we have to provide it manually.
 # the simplest solution would be putting a file containing <platform_info/> to bin/platform_info
-lappend_if [have_spec linux] boot_modules platform_info
 
 build_boot_image $boot_modules
 
