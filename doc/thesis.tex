@@ -23,40 +23,71 @@ DIV=11,
 	
 	\chapter{Introduction}
 		
-		At the present time we are surrounded by devices that run complex software and operating systems.
+	
+                At the present time we are surrounded by devices that run complex software and operating systems.
 		The number of these devices is still rising and their complexity is growing by the increasing amount computational resources, functionalities and interfaces.
 		Also many of these devices are taking over important tasks such as smart locks or even cardiac pacemakers.
 		Since most of these devices are connected to the public Internet they cannot only be accessed by their owners but anyone.
 		
+		Most of the modern systems run on kernels built in a monolithic manner.
+		This implies that a high amount of the critical functionality such as device drivers and networking stack are implemented by them.
+		All these complex software constructs run on the so called kernel mode which is the highest privileged mode it can achieve.
+		It is where the operating system kernel usually runs in.
+		Since it can access and control the whole system including any user processes a single vulnerability in any of its components could compromise the entire system.
+		
+		Furthermore the quality of this software is often bad.
+		This is especially true for device drivers which have around three to seven times higher error rates than other kernel parts.
+		That is even more problematic since drivers also are the majority of the code.
+		While an attacker often needs to find only a single error monolithic kernels often contain thousands of them due to their large code base.
+		
+		Also when bugs appear in the kernel it needs in average far over one year until a fix is available.
+		And even then it takes additional time until it is brought to the user.
+		There are also systems that cannot be patched for different reasons.
+		These will stay vulnerable for their whole lifetime. \citep{Chou:SOSP:01}
+		
+		A first step to mitigate this problem would be the usage of user level drivers.
+		The user level is a less privileged mode than the kernel mode.
+		It runs most of the software on a system including all conventional end user applications and has certain security boundaries such as user permissions or device access restrictions.
+		This would not solve the problems based on the errors in the software itself but it would lower their privileges.
+		A compromised driver would not be able to access and control the whole system but only a part of it.
+		
+		To benefit from user space drivers certain requirements need to be fulfilled.
+		The driver must run completely inside the user space without any exceptions.
+		At the point where it needs to run its own code inside the kernel any security advantage is gone since an attacker could escalade its privileges.
+		
+		% no kernel modifications 
+		
+		% updates ?
 		These facts raise the question if we can trust these devices.
 		Many cases in the present have shown that nearly all of these devices have security issues.
 		Since the used systems are too complex to guarantee the absence of software errors the common practice is patching these devices when an error has been discovered.
 		Unfortunately the approach of fixing errors has not proven reliable.
 		Updates are often not or only for a short time available and often do not find their way to the end user.
 		
-		A difference to this practice are sectors where manufacturers are liable for the correctness of their products including software parts.
-		This can be achieved by enforcing specific work flows that reduce error probabilities and intensive testing.
-		But also verification with formal and mathematical methods can be used diminish the rate of faults.
-		
-		While this seems to be a solution to the current problems this approach is far from being scalable enough.
-		Comprehensive testing requires a high amount of resources that often is not available or economically reasonable.
-		Also verification requires an even higher effort and for many large projects it is far from being possible.
-		This leads to the question how the high complexity of current applications can be combined with the trustiness of comprehensively tested and verified software.
-		
-		That is the point where component based systems have their use case.
-		They separate the untrusted parts of the software from each other while providing defined ways for them to communicate with each other.
-		The component based system itself does not implement any functionality beside separation and enforcement of policies.
-		This allows a small trusted code base that is able to be verified and tested.
-		
-		The software components themselves do not need to be trusted any more.
-		Due to the separation a fault or security issue does only affect a single component and cannot spread across other applications.
-		To enforce this behaviour through all parts of the system the architecture is based on a micro kernel.
-		
-		Most of the common operating systems use a monolithic kernel.
-		This means that all drivers run in the kernel space.
-		Not only hardware accessing parts are included there but also file systems and networking stacks.
-		This leads to the problem that if only one of these drivers is compromised it can access the whole kernel and therefore the complete system.
-		All security assumptions in the user space are invalid from this point.
+		% component based systems
+%		A difference to this practice are sectors where manufacturers are liable for the correctness of their products including software parts.
+%		This can be achieved by enforcing specific work flows that reduce error probabilities and intensive testing.
+%		But also verification with formal and mathematical methods can be used diminish the rate of faults.
+%		
+%		While this seems to be a solution to the current problems this approach is far from being scalable enough.
+%		Comprehensive testing requires a high amount of resources that often is not available or economically reasonable.
+%		Also verification requires an even higher effort and for many large projects it is far from being possible.
+%		This leads to the question how the high complexity of current applications can be combined with the trustiness of comprehensively tested and verified software.
+%		
+%		That is the point where component based systems have their use case.
+%		They separate the untrusted parts of the software from each other while providing defined ways for them to communicate with each other.
+%		The component based system itself does not implement any functionality beside separation and enforcement of policies.
+%		This allows a small trusted code base that is able to be verified and tested.
+%		
+%		The software components themselves do not need to be trusted any more.
+%		Due to the separation a fault or security issue does only affect a single component and cannot spread across other applications.
+%		To enforce this behaviour through all parts of the system the architecture is based on a micro kernel.
+%		
+%		Most of the common operating systems use a monolithic kernel.
+%		This means that all drivers run in the kernel space.
+%		Not only hardware accessing parts are included there but also file systems and networking stacks.
+%		This leads to the problem that if only one of these drivers is compromised it can access the whole kernel and therefore the complete system.
+%		All security assumptions in the user space are invalid from this point.
 		
 	\chapter{Background}
 
