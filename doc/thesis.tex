@@ -6,7 +6,6 @@ parskip=half,
 DIV=11,
 ]{scrbook}
 
-\usepackage[english,ngerman]{babel}
 \usepackage[utf8]{inputenx}
 \usepackage[T1]{fontenc}
 \usepackage{hyperref}
@@ -20,130 +19,64 @@ DIV=11,
 
 \begin{document}
 	
-	\selectlanguage{english}
 	\tableofcontents
 	
 	\chapter{Introduction}
-	
-	At the present time we are surrounded by devices that run complex software and operating systems.
-	The number of these devices is still rising and their complexity is growing by the increasing amount computational resources, functionalities and interfaces.
-	Also many of these devices are taking over important tasks such as smart locks or even cardiac pacemakers.
-	Since most of these devices are connected to the public Internet they cannot only be accessed by their owners but anyone.
-	
-	These facts raise the question if we can trust these devices.
-	Many cases in the present have shown that nearly all of these devices have security issues.
-	Since the used systems are too complex to guarantee the absence of software errors the common practice is patching these devices when an error has been discovered.
-	Unfortunately the approach of fixing errors has not proven reliable.
-	Updates are often not or only for a short time available and often do not find their way to the end user.
-	
-	A difference to this practice are sectors where manufacturers are liable for the correctness of their products including software parts.
-	This can be achieved by enforcing specific work flows that reduce error probabilities and intensive testing.
-	But also verification with formal and mathematical methods can be used diminish the rate of faults.
-	
-	While this seems to be a solution to the current problems this approach is far from being scalable enough.
-	Comprehensive testing requires a high amount of resources that often is not available or economically reasonable.
-	Also verification requires an even higher effort and for many large projects it is far from being possible.
-	This leads to the question how the high complexity of current applications can be combined with the trustiness of comprehensively tested and verified software.
-	
-	That is the point where component based systems have their use case.
-	They separate the untrusted parts of the software from each other while providing defined ways for them to communicate with each other.
-	The component based system itself does not implement any functionality beside separation and enforcement of policies.
-	This allows a small trusted code base that is able to be verified and tested.
-	
-	The software components themselves do not need to be trusted any more.
-	Due to the separation a fault or security issue does only affect a single component and cannot spread across other applications.
-	To enforce this behaviour through all parts of the system the architecture is based on a micro kernel.
-	
-	Most of the common operating systems use a monolithic kernel.
-	This means that all drivers run in the kernel space.
-	Not only hardware accessing parts are included there but also file systems and networking stacks.
-	This leads to the problem that if only one of these drivers is compromised it can access the whole kernel and therefore the complete system.
-	All security assumptions in the user space are invalid from this point.
-	
-	\section{Micro kernels}
-	
-	Micro kernels solve this problem by implementing only resource managing and the most basic hardware access mechanisms.
-	While monolithic kernels usually have all drivers and many services running in the kernel space micro kernels are reduced to a small set of kernel abstractions.
-	Only this tiny part of the operating system runs in the kernel mode.
-	Any further functionality is provided by services that run in the user space.
-	This results in a loosely coupled structure of the system where communication is done in a client server model. \citep{minix}
-	
-	Yet while many monolithic kernels, such as Linux, support many different hardware architectures most micro kernels only support one.
-	To port a micro kernel based operating system to another architecture the kernel either needs to be replaced or ported itself.
-	The first option often is either not available at all or quite limited as some integral parts of the system need to be adapted to each kernel.
-	The second option also requires high effort or is not feasible at all depending of the properties of the target architecture.
-	
-	An alternative to porting a micro kernel would be using a repurposed monolithic kernel like Linux.
-	While some prerequisites need to be done to run user level drivers the advantage of many already enabled architectures can be used.
-	To stay with the example of Linux there are already many debugging and development tools available that might be missing on the micro kernel.
-	Due to the nature of such a system the drivers developed on Linux can be used also on the micro kernel when it is ported later.
-	This is relevant for hardware drivers as well.
-	
-	\chapter{Background} %hardware description
+		
+		At the present time we are surrounded by devices that run complex software and operating systems.
+		The number of these devices is still rising and their complexity is growing by the increasing amount computational resources, functionalities and interfaces.
+		Also many of these devices are taking over important tasks such as smart locks or even cardiac pacemakers.
+		Since most of these devices are connected to the public Internet they cannot only be accessed by their owners but anyone.
+		
+		These facts raise the question if we can trust these devices.
+		Many cases in the present have shown that nearly all of these devices have security issues.
+		Since the used systems are too complex to guarantee the absence of software errors the common practice is patching these devices when an error has been discovered.
+		Unfortunately the approach of fixing errors has not proven reliable.
+		Updates are often not or only for a short time available and often do not find their way to the end user.
+		
+		A difference to this practice are sectors where manufacturers are liable for the correctness of their products including software parts.
+		This can be achieved by enforcing specific work flows that reduce error probabilities and intensive testing.
+		But also verification with formal and mathematical methods can be used diminish the rate of faults.
+		
+		While this seems to be a solution to the current problems this approach is far from being scalable enough.
+		Comprehensive testing requires a high amount of resources that often is not available or economically reasonable.
+		Also verification requires an even higher effort and for many large projects it is far from being possible.
+		This leads to the question how the high complexity of current applications can be combined with the trustiness of comprehensively tested and verified software.
+		
+		That is the point where component based systems have their use case.
+		They separate the untrusted parts of the software from each other while providing defined ways for them to communicate with each other.
+		The component based system itself does not implement any functionality beside separation and enforcement of policies.
+		This allows a small trusted code base that is able to be verified and tested.
+		
+		The software components themselves do not need to be trusted any more.
+		Due to the separation a fault or security issue does only affect a single component and cannot spread across other applications.
+		To enforce this behaviour through all parts of the system the architecture is based on a micro kernel.
+		
+		Most of the common operating systems use a monolithic kernel.
+		This means that all drivers run in the kernel space.
+		Not only hardware accessing parts are included there but also file systems and networking stacks.
+		This leads to the problem that if only one of these drivers is compromised it can access the whole kernel and therefore the complete system.
+		All security assumptions in the user space are invalid from this point.
+		
+	\chapter{Background}
 
-	Modern System access their hardware through different channels.
-	Which one and how these are used depends on the type of hardware and on the requirements to the system.
-	These are often a high bandwidth to transmit data or a low latency to react on input.
-	Depending on these demands different mechanisms are used.
-	
-	Peripheral devices are often connected via busses such as the PCI (Peripheral Component Interconnect).
-	Those devices can either be user hardware such as graphics card or controller that connect other bus systems or devices.
-	The SATA bus is such an example.
-	While hard drive disks are connected directly to it a controller is necessary that connects it to the PCI bus which again is connected to the CPU.
-	
-	While the amount of different busses is large access to them can be broken down to a few mechanisms.
-	Higher level accessors that enable more distant devices such as the drive mentioned in the example can be broken down to these few.
-	Orders for the driver on the SATA bus are just an abstraction to what needs to be communicated with the SATA controller. \citep{iosystems}
-
-	\section{IO Ports}
-	
-	IO ports or port IO is a mechanism used mainly on the Intel x86 architecture.
-	It consists of a hardware bus that is connected directly to the processor and peripheral devices.
-	The ports can be used for bidirectional communication similar to a serial interface.
-	Access is handled through a specific set of instructions that take addresses and data.
-	A special benefit of this mechanism is its atomicity.
-	Instructions are guaranteed to be finished before the execution of their successors.
-	
-	There are 2\textsuperscript{16} addressable ports which transmit 8 bit of data per transaction.
-	Consecutive ports can be used to transmit up to 32 bit at once.
-	To make use of this the ports need to be aligned on even addresses (for 16 bit transmissions) or on multiples of four (for 32 bit transmissions).
-	Other alignments are possible but come with a performance loss.
-	
-	On modern systems this mechanism often supports legacy hardware such as PS/2 or a floppy disk controllers.
-	Also many other architectures lack this type of communication and use memory mapped IO which is also increasingly used with Intel x86 hardware.
-	\citep{ioports} \citep{intelmanual}
-	
-	\section{Memory mapped IO}
-	
-	Memory mapped IO is a widely used mechanism to access hardware.
-	It maps hardware registers into the physical address space.
-	From the view of the operating system it looks as it is part of the available RAM.
-	Yet these regions differ in behaviour to conventional registers.
-	Accesses to memory mapped IO cannot be cached as they might have side effects on hardware or other registers.
-	Even reading might influence the device.
-	This is important especially in exception handling where accesses might be repeated.
-	
-	Memory mapped IO is widely used on different architectures as it provides a clear interface and enables the transfer of substantial amounts of data.
-	Also with 64 bit addressing the physical address space is large enough to prevent collisions with conventional RAM.
-	\citep{intelmanual}
-	
-	\section{Interrupts}
-	
-	Interrupts are asynchronous events sent by external devices.
-	Beside the so called interrupt number no further information is transmitted.
-	Also this is a single directional channel.
-	Interrupts are triggered by a device and received by the CPU.
-	
-	When an interrupt occurs the execution of the current task is interrupted by the CPU and a handler procedure is called.
-	The handler is registered to one of the 18 predefined or 224 user defined interrupts.
-	When it is called the only information available is that one of the interrupts it was registered to has been triggered.
-	Any further information needs to be acquired through other channels, for example memory mapped IO. \citep{intelmanual}
-	
-	This mechanism is usually used for devices that wait for events such as keyboards.
-	Instead of checking periodically if a key has been pressed it registers an interrupt that is triggered once a key is pressed.
-	Then the driver can check which key has been pressed and pass this information to the operating system.
-	
-	\chapter{State of the art}
+		Modern System access their hardware through different channels.
+		Which one and how these are used depends on the type of hardware and on the requirements to the system.
+		These are often a high bandwidth to transmit data or a low latency to react on input.
+		Depending on these demands different mechanisms are used.
+		
+		Peripheral devices are often connected via busses such as the PCI (Peripheral Component Interconnect).
+		Those devices can either be user hardware such as graphics card or controller that connect other bus systems or devices.
+		The SATA bus is such an example.
+		While hard drive disks are connected directly to it a controller is necessary that connects it to the PCI bus which again is connected to the CPU.
+		
+		While the amount of different busses is large access to them can be broken down to a few mechanisms.
+		Higher level accessors that enable more distant devices such as the drive mentioned in the example can be broken down to these few.
+		Orders for the driver on the SATA bus are just an abstraction to what needs to be communicated with the SATA controller. \citep{iosystems}
+		
+		\section{Monolithic kernels}
+		
+		\section{Microkernels}
 		
 		\section{Genode}
 		
@@ -165,7 +98,7 @@ DIV=11,
 			\caption{Application based TCB \citep{genode}}
 			\label{fig:tcb_tree}
 		\end{figure}
-	
+		
 		The Genode OS framework is the implementation of this architecture for highly secure special purpose operating systems.
 		Mainly written in C++ it scales from embedded systems with only a few megabytes of memory to big systems with dynamic workloads.
 		The architecture consists of a recursive sandbox structure.
@@ -185,6 +118,8 @@ DIV=11,
 		This is a good approach for applications but is also limited.
 		Some resources cannot be used since the Linux kernel doesn't provide them to the user space, for example memory mapped IO or direct memory access.
 		To develop and debug native Genode device drivers the kernel needs to act as a microkernel and provide access to these resources in Genode.
+	
+	\chapter{Related work}
 		
 		\section{User space drivers on Linux}
 		
@@ -206,6 +141,7 @@ DIV=11,
 		While updates of kernel modules often require the recompilation of the kernel or at least a reboot of the system updates of these drivers can be done more easily. \citep{uio}
 		
 		\section{Rump kernels}
+		
 		A rump kernel provides a lightweight environment for drivers on top of an anykernel.
 		The flexible anykernel architecture allows kernels to run in different configurations or modes.
 		They can be created from a monolithic kernel with a moderate effort.
@@ -241,58 +177,9 @@ DIV=11,
 		The BSD kernel makes USB devices accessible to the user space via \texttt{ugen} the USB generic device support.
 		The rump kernel implementation of the USB driver allows to configure the access to specific USB devices at compile time. \citep{kantee} \citep{ugen}
 		
-	\chapter{Requirements} %%what needs to be done
+		\section{Fuse}
 	
-		To enable Linux as a micro kernel it needs to provide an interface for user space applications to access hardware resources.
-		While Linux already makes some of these observable or even accessible from the user space those methods lack the access granularity a micro kernel would provide and the operating systems would require.
-		Some of these methods give an all or nothing access to resources which violates the security assumptions micro kernel based systems make.
-	
-		In this thesis for enabling Genode on Linux to support hardware drivers three basic resources need to be available in the user space.
-		Those are IO ports, memory mapped IO and interrupts.
-		Each of these has different properties on Linux so their requirements are evaluated separately from each other.
-		
-		\section{IO Ports}
-		
-		IO ports do not require any special modification to Linux itself as they are already accessible from the user space through a defined API that can be used by user space programs.
-		These are all available through the \texttt{sys/io.h} header which provides syscalls and access functions for this mechanism. \citep{ioperm} \citep{iopl} \citep{outb}
-	
-		\section{Memory mapped IO}
-		
-		There is already a mechanism to access physical memory ranges from the user space on Linux, \texttt{/dev/mem}.
-		This is a special character device that can be used by a user space program to map a physical range of memory into its address space.
-		While this would be sufficient to make things "work" it lacks a more fine grained access control.
-		
-		Any process that is able to open that device and map its memory can access all the available ranges and not only what it is supposed to.
-		In newer kernels this has a small restriction that only IO memory can be mapped.
-		Before it was even possible to access the whole available memory, even that of the kernel and other processes. \citep{devmem}
-		
-		Yet the access to only device memory ranges, but all of them, is still insufficient as a driver should only access the ranges its parent allowed it to.
-		This leads to the requirement of a more constrainable and controllable access mechanism.
-	
-		\section{Interrupts}
-		
-		Especially for input receiving devices such as keyboards or network interface cards interrupts are an important resource.
-		The Linux kernel does not allow to register an interrupt handler in the user space.
-		It is possible to see and observer interrupts in \texttt{/proc/interrupts} yet polling them from this file is not feasible as they are often require a low latency.
-		This leads to the need of a new mechanism that provides user space access and a reasonable latency.
-	
-		\section{Complexity}
-		
-		With security assumptions in mind enabling resource access for the user space is not the only requirement.
-		The Linux kernel is a complex construct with millions of lines of code.
-		To reduce this complexity as much unnecessary functionality as possible needs to be removed.
-		Beside the removal of drivers that are provided by the user space system such as USB and graphics support also other subsystems that usually are not directly visible to the common user need to be taken care of.
-		
-		This is especially important for parts that could be used to implement other requirements.
-		So it needs to be taken care of that nothing depends on those.
-		These systems include \texttt{procfs} and \texttt{sysfs} which many user space interfacing drivers depend on. \citep{sysfs} \citep{procfs}
-		
-		Also some drivers are required to be removed not only because of complexity but their interference with drivers that should run in the user space.
-		While the kernel might even allow multiple entities to access the same range of memory or IO ports this will likely cause errors.
-		Since these mechanisms access hardware resources they are highly volatile which also means that changes made by one driver are visible in another accessing the same device.
-		To prevent this any resource that is used by a user space driver must not be used by the kernel.
-	
-	\chapter{Design}
+	\chapter{Design and Implementation}
 	
 		\section{Integration into Genode}
 		The integration into Genode is done by creating a base directory.
@@ -318,6 +205,22 @@ DIV=11,
 		Additionally this code needs to be brought upstream as it cannot be plugged into the source tree like a separate base directory.
 		
 		\section{IO Ports}
+		
+		IO ports or port IO is a mechanism used mainly on the Intel x86 architecture.
+		It consists of a hardware bus that is connected directly to the processor and peripheral devices.
+		The ports can be used for bidirectional communication similar to a serial interface.
+		Access is handled through a specific set of instructions that take addresses and data.
+		A special benefit of this mechanism is its atomicity.
+		Instructions are guaranteed to be finished before the execution of their successors.
+		
+		There are 2\textsuperscript{16} addressable ports which transmit 8 bit of data per transaction.
+		Consecutive ports can be used to transmit up to 32 bit at once.
+		To make use of this the ports need to be aligned on even addresses (for 16 bit transmissions) or on multiples of four (for 32 bit transmissions).
+		Other alignments are possible but come with a performance loss.
+		
+		On modern systems this mechanism often supports legacy hardware such as PS/2 or a floppy disk controllers.
+		Also many other architectures lack this type of communication and use memory mapped IO which is also increasingly used with Intel x86 hardware.
+		\citep{ioports} \citep{intelmanual}
 		
 		The implementation of of the \texttt{IO\_Port} session on Linux can be done straight forward.
 		This is because IO ports are already available in the user space.
@@ -348,13 +251,29 @@ DIV=11,
 		
 		\section{Memory mapped IO}
 		
-		While memory mapped IO is much more important that IO ports Linux does not provide a good interface to use it from the user space.
-		It only has a \texttt{mem} device that has all physical memory mapped into a file.
-		while this is an easy method to map memory into a user space process it has some disadvantages especially in regard to Genodes security and process isolation.
-		If those disadvantages shall be avoided a custom adoption of kernel space needs to be done.
-		This goal can be achieved in multiple ways.
+		Memory mapped IO is a widely used mechanism to access hardware.
+		It maps hardware registers into the physical address space.
+		From the view of the operating system it looks as it is part of the available RAM.
+		Yet these regions differ in behaviour to conventional registers.
+		Accesses to memory mapped IO cannot be cached as they might have side effects on hardware or other registers.
+		Even reading might influence the device.
+		This is important especially in exception handling where accesses might be repeated.
 		
-		Also while there are multiple already existing solutions to write user space drivers these usually either pull dependencies behind or are too complex for the goal of a minimized kernel.
+		Memory mapped IO is widely used on different architectures as it provides a clear interface and enables the transfer of substantial amounts of data.
+		Also with 64 bit addressing the physical address space is large enough to prevent collisions with conventional RAM.
+		\citep{intelmanual}
+		
+		While memory mapped IO is much more important that IO ports Linux does not provide a good interface to use it from the user space.
+		There is already a mechanism to access physical memory ranges from the user space on Linux, \texttt{/dev/mem}.
+		This is a special character device that can be used by a user space program to map a physical range of memory into its address space.
+		While this would be sufficient to make things "work" it lacks a more fine grained access control.
+		
+		Any process that is able to open that device and map its memory can access all the available ranges and not only what it is supposed to.
+		In newer kernels this has a small restriction that only IO memory can be mapped.
+		Before it was even possible to access the whole available memory, even that of the kernel and other processes. \citep{devmem}
+		
+		Yet the access to only device memory ranges, but all of them, is still insufficient as a driver should only access the ranges its parent allowed it to.
+		This leads to the requirement of a more constrainable and controllable access mechanism.
 		
 		\subsection{Memory device}
 		
@@ -428,16 +347,46 @@ DIV=11,
 		
 		\section{Interrupts}
 		
+			Interrupts are asynchronous events sent by external devices.
+		Beside the so called interrupt number no further information is transmitted.
+		Also this is a single directional channel.
+		Interrupts are triggered by a device and received by the CPU.
 		
-	\chapter{Implementation}
-	
-	\section{IO Ports}
-	
-	\section{Memory mapped IO}
+		When an interrupt occurs the execution of the current task is interrupted by the CPU and a handler procedure is called.
+		The handler is registered to one of the 18 predefined or 224 user defined interrupts.
+		When it is called the only information available is that one of the interrupts it was registered to has been triggered.
+		Any further information needs to be acquired through other channels, for example memory mapped IO. \citep{intelmanual}
+		
+		This mechanism is usually used for devices that wait for events such as keyboards.
+		Instead of checking periodically if a key has been pressed it registers an interrupt that is triggered once a key is pressed.
+		Then the driver can check which key has been pressed and pass this information to the operating system.
+		
+		The Linux kernel does not allow to register an interrupt handler in the user space.
+		It is possible to see and observer interrupts in \texttt{/proc/interrupts} yet polling them from this file is not feasible as they are often require a low latency.
+		This leads to the need of a new mechanism that provides user space access and a reasonable latency.
+		
+		\section{Complexity}
+		
+		With security assumptions in mind enabling resource access for the user space is not the only requirement.
+		The Linux kernel is a complex construct with millions of lines of code.
+		To reduce this complexity as much unnecessary functionality as possible needs to be removed.
+		Beside the removal of drivers that are provided by the user space system such as USB and graphics support also other subsystems that usually are not directly visible to the common user need to be taken care of.
+		
+		This is especially important for parts that could be used to implement other requirements.
+		So it needs to be taken care of that nothing depends on those.
+		These systems include \texttt{procfs} and \texttt{sysfs} which many user space interfacing drivers depend on. \citep{sysfs} \citep{procfs}
+		
+		Also some drivers are required to be removed not only because of complexity but their interference with drivers that should run in the user space.
+		While the kernel might even allow multiple entities to access the same range of memory or IO ports this will likely cause errors.
+		Since these mechanisms access hardware resources they are highly volatile which also means that changes made by one driver are visible in another accessing the same device.
+		To prevent this any resource that is used by a user space driver must not be used by the kernel.
+		
+		
+
 	
 	
 	\chapter{Evaluation}
-	\chapter{Conclusion}
+
 	
 	\bibliographystyle{unsrtnat}
 	\bibliography{sources}
