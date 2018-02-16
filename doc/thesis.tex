@@ -139,6 +139,26 @@ DIV=11,
 		
 		\section{Microkernels}
 		
+		Micro kernels are the contrary concept to monolithic kernel.
+		Their goal is, in simple terms, to remove as much functionality as possible from the kernel and implement it outside of it.
+		This aims to make the system highly modularizable and isolate failures in components from the rest of the system.
+		
+		As a general requirement a micro kernel should only functionality that would be impossible to implement outside the kernel.
+		It also has to separate and protect applications from itself and each other.
+		Any component that runs on a micro kernel must not be influenced by any other. And if two components communicate between each other the communication must be secure in regards of confidentiality and integrity.
+		
+		These requirements are met by different concepts.
+		One of them are address spaces which are mappings from physical to virtual memory pages.
+		These are given recursively to child subsystems.
+		The first subsystem owns the whole physical memory in a single address space from where it can grant parts of it to another subsystem.
+		Its own access to this page is then removed.
+		If it wants to keep this space, for example to employ shared memory, it can map the space to the other subsystem.
+		To reverse the mapping the according address space can be flushed removing it from all other subsystems except the flushing one.
+		The managing of these operations is done in the kernel itself.
+		While I/O memory is a does not necessarily represent physical main memory it is also managed in this context.
+		
+		%threads...
+		
 		\section{Genode}
 		
 		Genode aims to solve this problem through multiple ways.
