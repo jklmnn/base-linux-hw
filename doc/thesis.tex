@@ -56,13 +56,23 @@ DIV=11,
 		At the point where it needs to run its own code inside the kernel any security advantage is gone since an attacker could escalade its privileges.
 		
 		% no kernel modifications 
+		A second requirement are kernel interfaces that allow drivers to work completely without any further modifications to the kernel.
+		This is founded on two reasons.
+		First it improves operability as drivers can be loaded or patched without any influence on the kernel itself.
+		Second, and more importantly, they cannot introduce further errors to the kernel.
+		Any modification, even if it is only a small one done to interface with a driver can cause bugs that could compromise the security of the entire system.
+		To prevent this the kernel needs to stay untouched.
+		
+		If an existing kernel, such as Linux, is used to fulfil these needs a suitable interface needs to be added which is then used by the drivers.
+		This interface of course is itself a modification to the kernel and needs to be treated as security relevant code.
+		Yet it is still much smaller than the drivers it is meant to move to the user space.
 		
 		% updates ?
-		These facts raise the question if we can trust these devices.
-		Many cases in the present have shown that nearly all of these devices have security issues.
-		Since the used systems are too complex to guarantee the absence of software errors the common practice is patching these devices when an error has been discovered.
-		Unfortunately the approach of fixing errors has not proven reliable.
-		Updates are often not or only for a short time available and often do not find their way to the end user.
+%		These facts raise the question if we can trust these devices.
+%		Many cases in the present have shown that nearly all of these devices have security issues.
+%		Since the used systems are too complex to guarantee the absence of software errors the common practice is patching these devices when an error has been discovered.
+%		Unfortunately the approach of fixing errors has not proven reliable.
+%		Updates are often not or only for a short time available and often do not find their way to the end user.
 		
 		% component based systems
 %		A difference to this practice are sectors where manufacturers are liable for the correctness of their products including software parts.
@@ -211,6 +221,20 @@ DIV=11,
 		\section{Fuse}
 	
 	\chapter{Design and Implementation}
+	
+		Modern System access their hardware through different channels.
+		Which one and how these are used depends on the type of hardware and on the requirements to the system.
+		These are often a high bandwidth to transmit data or a low latency to react on input.
+		Depending on these demands different mechanisms are used.
+		
+		Peripheral devices are often connected via busses such as the PCI (Peripheral Component Interconnect).
+		Those devices can either be user hardware such as graphics card or controller that connect other bus systems or devices.
+		The SATA bus is such an example.
+		While hard drive disks are connected directly to it a controller is necessary that connects it to the PCI bus which again is connected to the CPU.
+		
+		While the amount of different busses is large access to them can be broken down to a few mechanisms.
+		Higher level accessors that enable more distant devices such as the drive mentioned in the example can be broken down to these few.
+		Orders for the driver on the SATA bus are just an abstraction to what needs to be communicated with the SATA controller. \citep{iosystems}
 	
 		\section{Integration into Genode}
 		The integration into Genode is done by creating a base directory.
