@@ -7,6 +7,7 @@
 set build_components {
     core init
     drivers/platform
+    test/pci
 }
 
 lappend_if [have_spec linux] build_components lib/initramfs
@@ -64,8 +65,20 @@ append config {
 				<pci bus="0" device="0" function="0"/>
 				<pci class="ISABRIDGE"/>
                         </policy>
+                        <policy label_prefix="test-pci"> <pci class="ALL"/> </policy>
 		</config>
-	</start>
+            </start>
+
+            <start name="test-pci" caps="100">
+                <resource name="RAM" quantum="10M"/>
+                <route>
+                        <service name="LOG"><parent/></service>
+			<service name="PD">     <parent/> </service>
+			<service name="CPU">    <parent/> </service>
+                        <service name="ROM">    <parent/> </service>
+                        <service name="Platform"><child name="platform_drv"/></service>
+                    </route>
+            </start>
 
         <!-- /platform driver -->
 </config>
@@ -77,6 +90,7 @@ install_config $config
 set boot_modules {
     core init ld.lib.so
     platform_drv
+    test-pci
 }
 
 lappend_if [have_spec linux] boot_modules initramfs
