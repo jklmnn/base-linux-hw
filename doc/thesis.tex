@@ -224,8 +224,45 @@ DIV=11,
 		The other is the session concept which implements the IPC mechanism and also provides abstractions to platform specific code.
 		
 		\subsection{Repositories}
+		\label{repos}
+		
+		The source code of Genode is organized in so called repositories.
+		Each repository, or short repo, can contain multiple software components.
+		Itself is divided into different directories.
+		The \texttt{src} directory contains all the source code that is built by the build system.
+		Together with \texttt{lib} which includes descriptions for the build system on how to build libraries and what interfaces should be publicly visible to other components those are the two most important parts as they are required to build basic components.
+		
+		\texttt{run} contains so called run files.
+		These are complex setups that describe the entire build process for the creation of a complete system.
+		The set the required components to build and include into the image and define a configuration.
+		This is the heart of a Genode system.
+		It defines the allowed resources and IPC routes which are enforced by the core.
+		
+		Other often used parts are \texttt{doc} which contains documentation and \texttt{etc} that sets specific properties to this repository.
+		These define on which architectures or platforms the components of this repository are supported.
+		\texttt{tool} contains arbitrary helper objects such as pre built binaries.
+		
+		The repositories itself can be divided into two main groups.
+		Most of them incorporate application level components or device drivers.
+		But a few of them, prefixed with \texttt{base}, implement the core component which provides the basic resources and is the direct or indirect parent of all others.
+		Since it is platform dependent there exist multiple of these implementations named \texttt{base-<platform>}. \citep{genode}
 		
 		\subsection{Sessions}
+		
+		Sessions are the IPC implementation in Genode.
+		They provide a way to communicate between components but also an abstraction for platform dependent concepts.
+		They are divided into two groups of them, one for the core tasks and one for the operating system level.
+		
+		The core session include basic resources such as protection domains, RAM and CPU.
+		More important for this thesis they also provide hardware access abstractions for I/O memory, I/O ports and interrupts.
+		Since logging is an important part of every system it is also included here.
+		
+		All of them are provided by the core component.
+		As the implementation of this group is often not or hardly portable each platform requires its own adaptions.
+		They are implemented in the base repositories as described in section \ref{repos}.
+		
+		The operating system level sessions are mostly platform independent and only rely on the abstractions made by the core component.
+		They provide functionality such as framebuffers, network interface cards, timers or file systems. \citep{genode}
 	
 	\chapter{Related work}
 		
@@ -524,10 +561,6 @@ DIV=11,
 		While the kernel might even allow multiple entities to access the same range of memory or IO ports this will likely cause errors.
 		Since these mechanisms access hardware resources they are highly volatile which also means that changes made by one driver are visible in another accessing the same device.
 		To prevent this any resource that is used by a user space driver must not be used by the kernel.
-		
-		
-
-	
 	
 	\chapter{Evaluation}
 
