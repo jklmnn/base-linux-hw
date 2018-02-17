@@ -457,6 +457,7 @@ DIV=11,
 		However it is questionable if the semantics of mapping memory fit into modifying a processes attributes. \citep{syscall} \citep{prctl}
 		
 		\subsection{Custom device with ioctl}
+		\label{hwio}
 		
 		While, except for \texttt{sysfs}, most of these options use methods that were not intended to be used that way this is a partially reimplementation of \texttt{/dev/mem} fixing the issues stated above.
 		The custom device also makes memory mappable to a process via the file descriptor.
@@ -469,7 +470,7 @@ DIV=11,
 		
 		\section{Interrupts}
 		
-			Interrupts are asynchronous events sent by external devices.
+		Interrupts are asynchronous events sent by external devices.
 		Beside the so called interrupt number no further information is transmitted.
 		Also this is a single directional channel.
 		Interrupts are triggered by a device and received by the CPU.
@@ -486,6 +487,27 @@ DIV=11,
 		The Linux kernel does not allow to register an interrupt handler in the user space.
 		It is possible to see and observer interrupts in \texttt{/proc/interrupts} yet polling them from this file is not feasible as they are often require a low latency.
 		This leads to the need of a new mechanism that provides user space access and a reasonable latency.
+		
+		On Genode interrupts are implemented as threads that wait for a given hardware interrupt.
+		Once it is triggered the thread is woken up and calls the interrupt handler.
+		It is also masked and cannot receive further hardware interrupts until the handler acknowledged the handling of the last one. \citep{genode}
+		
+		With this behaviour in mind the interrupt on Linux can be implemented as a blocking read on a special device file.
+		The generic way is similar to the one described in section \ref{hwio}.
+		A custom device is opened and the file descriptor is configured via \texttt{ioctl}.
+		The configuration would set the interrupt number that the handler should be tied to.
+		Inside the module it would register on the according interrupt of the Linux kernel.
+		
+		The interrupt thread in Genode would receive the configured file descriptor and call a read on it.
+		The device has implemented the read in such a way that it will not return until the interrupt is triggered inside the kernel.
+		Once this happened the read would return and the handling can go on as defined in Genode.
+		
+		The masking of the interrupt is done by not calling read which.
+		This results in ignoring all hardware interrupt that occur in this time.
+		An acknowledgement by the handler calls read again and therefore unmasks the interrupt.
+		
+		This solution implements interrupts on Linux without polling and therefore should gain a feasible latency.
+		It also keeps the correct semantics of the implementation in Genode and should not require any workarounds.
 		
 		\section{Complexity}
 		
