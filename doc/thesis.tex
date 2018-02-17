@@ -158,6 +158,25 @@ DIV=11,
 		While I/O memory is a does not necessarily represent physical main memory it is also managed in this context.
 		
 		%threads...
+		The activity that happens in such an address space is called a thread.
+		It is characterized through its own state including its address space, stack pointer and instruction pointer.
+		Any changes the thread applies to its address space are controlled by the kernel.
+		Also it cannot access address spaces of other threads.
+		To be able to communicate inter process communication is used and therefore must be supported by the kernel.
+		
+		Inter process communication (IPC) is a defined way for two threads to communicate with each other.
+		While both parties must agree to the transmission the sender controls the content while the receiver has to handle it.
+		This handling includes if the contents are used at all and how they are interpreted.
+		
+		Beside message based IPC remote procedure calls can be used for communication.
+		It does not send data to other threads but migrates the sending one to another address space.
+		Both of these communication concepts need to be supervised by the kernel.
+		
+		On modern hardware interrupts are an often used way of devices to notify the software of events.
+		This mechanism also needs to be supported on micro kernels.
+		Interrupts are incorporated by empty IPC messages.
+		They are sent from threads that have special ids which map to hardware interrupt ids.
+		The receiving thread can conclude to the triggered interrupt by the source id. \citep{Liedtke_1995}
 		
 		\section{Genode}
 		
