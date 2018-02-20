@@ -563,7 +563,68 @@ DIV=11,
 		To prevent this any resource that is used by a user space driver must not be used by the kernel.
 	
 	\chapter{Evaluation}
+	
+		The working state of Genodes device drivers is the evaluation metric that this thesis is measured against.
+		The first part of this is getting an overview over the existing drivers and categorize them by their required resources.
+		Based on the implemented resources and the functionality of different drivers the state of each resource can be determined.
+		
+		\section{Resource requirements}
+		
+		The resource requirements drivers have do not refer to generic resources such as CPU time and RAM but to I/O that it available to communicate with hardware.
+		More specific these are I/O ports, I/O memory and interrupts.
+		In Genode they are represented by the \texttt{IO\_PORT}, \texttt{IO\_MEM} and \texttt{IRQ} sessions.
+		
+		To verify and analyse the drivers a reference platform is required.
+		To fulfil this a Lenovo ThinkPad X260 was chosen.
+		This was done due to the fact that most of the internal devices are supported by drivers available on Genode.
+		On the other hand this choice limits the driver selection to the Intel x86 architecture.
+		
+		Some of the selected drivers were available due to the platform such as the real time clock which is defined for the X86 platform.
+		Others such as USB can be used on any device since the controller interface has been standardized.
+		More complex devices as the network interface card driver are device specific and do not work on any platform.
+		A breakdown on which drivers is used for what reason or device is shown in table \ref{driver_selection}. \citep{xhci}
+		
+		\begin{table}[]
+			\centering
+			\begin{tabular}{ll}
+				Driver     & Basis \\
+				usb\_drv   &        \\
+				intel\_fb  &        \\
+				ahci\_drv  &        \\
+				nic\_drv   &        \\
+				audio\_drv &        \\
+				&        \\
+				&       
+			\end{tabular}
+			\caption{X260 hardware \citep{x260}}
+			\label{driver_selection}
+		\end{table}
+		
+		A special case is the platform driver.
+		While on one hand it is a common device driver itself it also functions as a gateway for resource requests of other drivers, especially those for PCI devices.
+		If such a device driver requires access to a hardware resource it does not do this directly but through a request at the platform driver which then requests the actual session from core.
+		This implies that such a driver additionally requires the resources the platform driver itself needs to work.
+		To properly display this the platform driver will be listed as a resource by itself and it will be marked which session was requested.
+		
+		\begin{table}[]
+			\centering
+			\begin{tabular}{ccccccccc}
+				& Timer & IO\_PORT & IO\_MEM & IRQ & Platform & P(IO\_PORT) & P(IO\_MEM) & P(IRQ) \\
+				platform\_drv &       & x        &         &     &          &             &            &        \\
+				acpi\_drv     &       &          & x       &     &          &             &            &        \\
+				fb\_boot\_drv & x     &          & x       &     &          &             &            &        \\
+				rtc\_drv      &       & x        &         &     &          &             &            &        \\
+				usb\_drv      & x     &          &         &     & x        & x           & x          & x      \\
+				intel\_fb     & x     &          & x       &     & x        & x           & x          & x      \\
+				ahci\_drv     & x     &          & x       &     & x        & x           & x          & x      \\
+				fb\_drv       & x     & x        & x       &     & x        & x           &            &        \\
+				nic\_drv      & x     &          &         &     & x        & x           & x          & x     
+			\end{tabular}
+			\caption{Device driver resource requirements}
+			\label{drivers}
+		\end{table}
 
+		Table \ref{drivers} shows the dependencies of each driver in Genode.
 	
 	\bibliographystyle{unsrtnat}
 	\bibliography{sources}
