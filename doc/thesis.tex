@@ -675,10 +675,11 @@ DIV=11,
 		To prevent this any resource that is used by a user space driver must not be used by the kernel.
 		
 		\section{Integration into Genode}
-		The integration into Genode is done by creating a base directory.
-		This is used to build a core binary which then is executed by the kernel.
-		Since there is already a core that is able to use the Linux kernel it would be redundant to rewrite these parts.
-		Reusing the already available code can be done in three different ways.
+		
+		These concepts need to be integrated into Genodes source tree.
+		This should be done via a repository as explained in section \ref{repos}.
+		Since there is already a Linux specific implementation this should be reused in the solution.
+		with these constraints set there are three feasible ways to integrate.
 		
 		\subsection{Copy base-linux}
 		The simplest way to build upon base-linux is creating a copy it in a new base directory.
@@ -698,6 +699,8 @@ DIV=11,
 		Additionally this code needs to be brought upstream as it cannot be plugged into the source tree like a separate base directory.
 	
 		\section{Implementation}
+		
+		
 	
 	\chapter{Evaluation}
 	
@@ -814,6 +817,40 @@ DIV=11,
 		One could argue that creating a independent version of a particular driver would change this.
 		Yet the assumption was to use unmodified drivers which would have been broken by any change to a driver itself.
 		Secondly since the driver is failing to function on the removal of this resource it is treated as a requirement.
+		
+		\section{Tested drivers}
+		
+		Since only I/O port and I/O memory support was actually implemented solely drivers that do not need interrupt have been tested.
+		The tests of the remaining have been done in a Qemu virtual machine and on the Lenovo ThinkPad X260.
+		
+		The \texttt{IO\_PORT} session worked without any problems.
+		It has been tested with the real time clock test that could be run unmodified.
+		This is also the configuration shown in listing \ref{implicitroutes}.
+		Secondly the platform driver was tested separately.
+		To verify its working state the component \texttt{pci-test} was used which acquires information about available PCI devices and prints them to the log.
+		This test showed the correct devices without any problems on both testing platforms.
+		
+		The \texttt{IO\_MEM} session had some medium issues.
+		The first test was done with \texttt{fb\_boot\_drv} which maps a single physical address and provides a framebuffer interface.
+		A component testing the framebuffer by drawing different colours to the screen was used and showed the expected results on both the virtual machine and the laptop.
+		
+		The \texttt{acpi\_drv} and \texttt{fb\_drv} were more difficult.
+		Both of them map and release different chunks pf physical memory.
+		The releasing regularly caused segmentation faults.
+		The exact cause could not be found but preventing the release by commenting out the specific part of the code caused the \texttt{acpi\_drv} to announce the correct information read from the ACPI tables.
+		While this comes with a somewhat broken state and memory leaks it shows that the conceptual design is working.
+		
+		While the \texttt{fb\_drv} was also affected by the segmentation faults this issue was worked around with removal of the actual memory releases.
+		Yet there was a second issue that caused the driver to hang arbitrarily at some point.
+		Only two tests did work and showed the output of the framebuffer test used with \texttt{fb\_boot\_drv}.
+		A workaround was to add log outputs to specific actions of the driver slowing it down.
+		This leads to the assumption that these failures are caused by a race condition.
+		Unfortunately this mitigation only worked in the virtual machine.
+		On the laptop the driver did not come up.
+		Furthermore it hung at a point that never caused any problems in the virtual machine.
+		Due to the constrained debug methods on this platforms this issue was not further researched.
+	
+		\section{Conclusion and future work}
 	
 	\bibliographystyle{unsrtnat}
 	\bibliography{sources}
