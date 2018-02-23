@@ -582,21 +582,50 @@ DIV=11,
 		Some of the selected drivers were available due to the platform such as the real time clock which is defined for the X86 platform.
 		Others such as USB can be used on any device since the controller interface has been standardized.
 		More complex devices as the network interface card driver are device specific and do not work on any platform.
-		A breakdown on which drivers is used for what reason or device is shown in table \ref{driver_selection}. \citep{xhci}
+		A breakdown on which drivers are tested and a short description of each one is shown in table \ref{driver_selection}.
 		
 		\begin{table}[]
 			\centering
-			\begin{tabular}{ll}
-				Driver     & Basis \\
-				usb\_drv   &        \\
-				intel\_fb  &        \\
-				ahci\_drv  &        \\
-				nic\_drv   &        \\
-				audio\_drv &        \\
-				&        \\
-				&       
+			\begin{tabular}{r|l}
+				Driver        & 
+				Description 
+				\\ \hline
+				platform\_drv & 
+				Enables many other drivers through resource management
+				\\ \hline
+				acpi\_drv     &
+				Advanced Configuration and Power Interface,
+				\\& often required to gain information about resources \citep{acpi_spec}
+				\\ \hline
+				fb\_boot\_drv &
+				Framebuffer driver that uses the (U)EFI provided graphics
+				\\& through Multiboot2, only available when booted via (U)EFI  \citep{multiboot2}
+				\\ \hline
+				rtc\_drv      &
+				x86 specific real time clock device driver
+				\\ \hline
+				usb\_drv      &
+				Generic xHCI USB driver \citep{xhci}
+				\\ \hline
+				intel\_fb     &
+				Intel i915 framebuffer driver, supported by the integrated
+				\\& Intel HD Graphics 520 \citep{x260}
+				\\ \hline
+				ahci\_drv     &
+				AHCI/SATA disk driver
+				\\ \hline
+				fb\_drv       &
+				VESA framebuffer driver, only available if booted via legacy BIOS
+				\\ \hline
+				nic\_drv      &
+				Intel e1000 network driver, supported by the integrated
+				\\& Intel I219 chipset \citep{x260}
+				\\  \hline
+				audio\_drv    &
+				Audio driver, supported by the integrated
+				\\& Realtek ALC3245 chipset \citep{x260}
 			\end{tabular}
-			\caption{X260 hardware \citep{x260}}
+			\caption{Used drivers}
 			\label{driver_selection}
 		\end{table}
 		
@@ -606,25 +635,48 @@ DIV=11,
 		This implies that such a driver additionally requires the resources the platform driver itself needs to work.
 		To properly display this the platform driver will be listed as a resource by itself and it will be marked which session was requested.
 		
+		Another exemption from the conventional resources is the timer.
+		While it is not hardware dependent it relies on the underlying kernel.
+		Even though it was already available on Linux it is needed to enable this platform and is listed here for completeness.
+		
+		The requirement analysis of was done by creating scenarios with explicit routes only.
+		The configurations were reduced to the point that taking away any of these resources would make the driver fail.
+		The results are visualized in table \ref{drivers}.
+	
 		\begin{table}[]
 			\centering
-			\begin{tabular}{ccccccccc}
-				& Timer & IO\_PORT & IO\_MEM & IRQ & Platform & P(IO\_PORT) & P(IO\_MEM) & P(IRQ) \\
-				platform\_drv &       & x        &         &     &          &             &            &        \\
-				acpi\_drv     &       &          & x       &     &          &             &            &        \\
-				fb\_boot\_drv & x     &          & x       &     &          &             &            &        \\
-				rtc\_drv      &       & x        &         &     &          &             &            &        \\
-				usb\_drv      & x     &          &         &     & x        & x           & x          & x      \\
-				intel\_fb     & x     &          & x       &     & x        & x           & x          & x      \\
-				ahci\_drv     & x     &          & x       &     & x        & x           & x          & x      \\
-				fb\_drv       & x     & x        & x       &     & x        & x           &            &        \\
-				nic\_drv      & x     &          &         &     & x        & x           & x          & x     
+			\begin{tabular}{r|c|c|c|c|c|c|c|c}
+				& \rotatebox[]{90}{Timer}
+		& \rotatebox[]{90}{IO\_PORT}
+		& \rotatebox[]{90}{IO\_MEM}
+		& \rotatebox[]{90}{IRQ}
+		& \rotatebox[]{90}{Platform driver}
+		& \rotatebox[]{90}{IO\_PORT (Platform)}
+		& \rotatebox[]{90}{IO\_MEM (Platform)}
+		& \rotatebox[]{90}{IRQ (Platform)} \\ \hline
+				
+				platform\_drv &   & x &   & &   &   &   &   \\ \hline
+				acpi\_drv     &   &   & x & &   &   &   &   \\ \hline
+				fb\_boot\_drv & x &   & x & &   &   &   &   \\ \hline
+				rtc\_drv      &   & x &   & &   &   &   &   \\ \hline
+				usb\_drv      & x &   &   & & x & x & x & x \\ \hline
+				intel\_fb     & x &   & x & & x & x & x & x \\ \hline
+				ahci\_drv     & x &   & x & & x & x & x & x \\ \hline
+				fb\_drv       & x & x & x & & x & x &   &   \\ \hline
+				nic\_drv      & x &   &   & & x & x & x & x \\ \hline
+				audio\_drv    & x &   &   & & x & x & x & x
 			\end{tabular}
 			\caption{Device driver resource requirements}
 			\label{drivers}
 		\end{table}
 
-		Table \ref{drivers} shows the dependencies of each driver in Genode.
+			
+		A note here is that all drivers using the platform driver also require the \texttt{IO\_PORT} session.
+		This has two reasons.
+		First of all the platform driver itself requires I/O ports so this dependency is basically inherited from anything depending on it.
+		One could argue that creating a independent version of a particular driver would change this.
+		Yet the assumption was to use unmodified drivers which would have been broken by any change to a driver itself.
+		Secondly since the driver is failing to function on the removal of this resource it is treated as a requirement.
 	
 	\bibliographystyle{unsrtnat}
 	\bibliography{sources}
