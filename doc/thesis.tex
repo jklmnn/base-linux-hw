@@ -248,6 +248,7 @@ DIV=11,
 		Since it is platform dependent there exist multiple of these implementations named \texttt{base-<platform>}. \citep{genode}
 		
 		\subsection{Sessions}
+		\label{sessions}
 		
 		Sessions are the IPC implementation in Genode.
 		They provide a way to communicate between components but also an abstraction for platform dependent concepts.
@@ -339,29 +340,140 @@ DIV=11,
 		While the amount of different busses is large access to them can be broken down to a few mechanisms.
 		Higher level accessors that enable more distant devices such as the drive mentioned in the example can be broken down to these few.
 		Orders for the driver on the SATA bus are just an abstraction to what needs to be communicated with the SATA controller. \citep{iosystems}
-	
-		\section{Integration into Genode}
-		The integration into Genode is done by creating a base directory.
-		This is used to build a core binary which then is executed by the kernel.
-		Since there is already a core that is able to use the Linux kernel it would be redundant to rewrite these parts.
-		Reusing the already available code can be done in three different ways.
-	
-		\subsection{Copy base-linux}
-		The simplest way to build upon base-linux is creating a copy it in a new base directory.
-		The advantage of this approach lies in the fact that there is, beside including the new directory, no need to modify upstream code.
-		On the other hand this leads to code duplication and any updates of base-linux probably need to be ported to its modified copy.
-	
-		\subsection{Include base-linux}
-		Creating a new base directory and including the needed contents from base-linux via Makefile fragments.
-		While this would include the advantages of the copy based approach there is less to no code duplication.
-		The disadvantage here is the complexity due to the build system that does not provide a standard way to include parts of other base directories.
-	
-		\subsection{Extend base-linux}
-		To prevent both code duplication and complex includes the already existing base directory could be used and extended.
-		While this approach seems to be easier it has two caveats.
-		Since it requires modifications of the original base-linux core the current functionality needs to be maintained.
-		This can be done either by creating a hybrid core that is able to run like the current one and on a bare Linux kernel or a switch needs to be added that chooses the target on build time.
-		Additionally this code needs to be brought upstream as it cannot be plugged into the source tree like a separate base directory.
+		
+		This chapter will evaluate how these resources are handled on Genode and what is needed to enable them on Linux.
+		To do this the required resources need to be identified first which is done on an existing kernel such as NOVA.
+		Each resource type has different properties so they will be evaluated separately.
+		Furthermore general conditions such as the kernels complexity and the integration of these concepts into Genode are discussed.
+		
+		\section{Requirements}
+		
+		The general low level resources that are used to communicate with hardware are I/O ports, I/O memory and interrupts.
+		While the first one is x86 specific the others can be found on many different architectures.
+		
+		As discussed in section \ref{sessions} Genode provides so called sessions as resource and communication interface.
+		According to the required resources the sessions \texttt{IO\_PORT}, \texttt{IO\_PORT} and \texttt{IRQ} are provided.
+		
+		Since it is difficult to implement them all correctly without and testing in between it makes sense to pick, implement and test them one by one.
+		Testing them requires not only hardware but also drivers that access it.
+		To test a single resource an according driver that only depends on this one is required.
+		This leads to the next step to analyse the resources a driver needs to function and to categorize these.
+		
+		In Genode sessions and therefore resources are managed by routes.
+		These can be set either implicitly or explicitly.
+		The former is used in nearly every configuration that was already available.
+		This was often done by setting a generic default route in the parent that would allow any interaction and was inherited by its children.
+		Exceptions from this were only settings that otherwise would have been ambiguous.
+		
+		Listing \ref{implicitroutes} shows the default configuration of the \texttt{rtc\_drv} test which tests the real time clock driver.
+		As described above it only specifies a default route which is valid for all children of the parent.
+		This route, in line 14 to 16 specifies that any service can use the parent or any child to fulfil its needs.
+		This does not help much as all actual required resources are invisible.
+		And even if they could be seen somehow this would reflect the maximally used and not the minimally required resources.
+		
+		\lstset{language=XMl,
+			caption={Implicit default routes},
+			label=implicitroutes,
+			breaklines=true,
+			numbers=left,
+			stepnumber=1}
+		\begin{lstlisting}
+<config prio\_levels="2" verbose="yes">
+		
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="IRQ"/>
+		<service name="IO\_MEM"/>
+		<service name="IO\_PORT"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+	</parent-provides>
+		
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<default caps="100"/>
+		
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides> <service name="Timer"/> </provides>
+	</start>
+		
+	<start name="rtc\_drv" priority="-1">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Rtc"/></provides>
+	</start>
+		
+	<start name="rtc\_drv" priority="-1">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Rtc"/></provides>
+	</start>
+		
+	<start name="test-rtc" priority="-1">
+		<resource name="RAM" quantum="1M"/>
+	</start>
+</config>
+		\end{lstlisting}
+		
+		The solution is to remove the default route.
+		This obviously leads to the whole system breaking since no resources are available to anyone.
+		The minimal requirement can be achieved by manually adding routes one by one until the desired functionality is available.
+		
+		The result is listing \ref{explicitroutes} which is already much more verbose.
+		It is also stripped down a bit and only shows the parent and one driver.
+		The default route of the parent is empty now but the \texttt{rtc\_drv} now has its own section for routes.
+		It requires the \texttt{PD} (Protection Domain), \texttt{CPU}, \texttt{LOG} and \texttt{ROM} sessions which are all provided by the parent.
+		Those are required by any component running on Genode, no matter if it is a device driver or not.
+		
+		The more interesting part is the \texttt{IO\_PORT} session route which also points to the parent.
+		Since this is the only one other session its also the only other requirement as this component has no access to anything else.
+		The essence of this example is that the implementation of the \texttt{IO\_PORT} session on a new platform can be tested with this driver.
+
+		\lstset{language=XMl,
+			caption={Explicit routes},
+			label=explicitroutes,
+			breaklines=true,
+			numbers=left,
+			stepnumber=1}
+		\begin{lstlisting}
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="IRQ"/>
+		<service name="IO\_MEM"/>
+		<service name="IO\_PORT"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+	</parent-provides>
+	<default-route>
+	</default-route>
+	<default caps="100"/>
+		
+	<start name="rtc\_drv">
+		<resource name="RAM" quantum="1M"/>
+		<provides>
+			<service name="Rtc"/>
+		</provides>
+		<route>
+			<service name="PD"><parent/></service>
+			<service name="CPU"><parent/></service>
+			<service name="LOG"><parent/></service>
+			<service name="ROM"><parent/></service>
+			<service name="IO\_PORT"><parent/></service>
+		</route>
+	</start>
+</config>
+		\end{lstlisting}
+		
+		For the other sessions this needs to be done analogously.
+		While the example was straight forward this does not necessarily count for the others.
+		The \texttt{IO\_MEM} session also can be tested solely with a single driver, the \texttt{fb\_boot\_drv} in this case.
+		But the \texttt{IRQ} is only used in combination with other sessions.
+		This results in the order the implementations need to be done with interrupts being the last.
 		
 		\section{IO Ports}
 		
@@ -561,6 +673,31 @@ DIV=11,
 		While the kernel might even allow multiple entities to access the same range of memory or IO ports this will likely cause errors.
 		Since these mechanisms access hardware resources they are highly volatile which also means that changes made by one driver are visible in another accessing the same device.
 		To prevent this any resource that is used by a user space driver must not be used by the kernel.
+		
+		\section{Integration into Genode}
+		The integration into Genode is done by creating a base directory.
+		This is used to build a core binary which then is executed by the kernel.
+		Since there is already a core that is able to use the Linux kernel it would be redundant to rewrite these parts.
+		Reusing the already available code can be done in three different ways.
+		
+		\subsection{Copy base-linux}
+		The simplest way to build upon base-linux is creating a copy it in a new base directory.
+		The advantage of this approach lies in the fact that there is, beside including the new directory, no need to modify upstream code.
+		On the other hand this leads to code duplication and any updates of base-linux probably need to be ported to its modified copy.
+		
+		\subsection{Include base-linux}
+		Creating a new base directory and including the needed contents from base-linux via Makefile fragments.
+		While this would include the advantages of the copy based approach there is less to no code duplication.
+		The disadvantage here is the complexity due to the build system that does not provide a standard way to include parts of other base directories.
+		
+		\subsection{Extend base-linux}
+		To prevent both code duplication and complex includes the already existing base directory could be used and extended.
+		While this approach seems to be easier it has two caveats.
+		Since it requires modifications of the original base-linux core the current functionality needs to be maintained.
+		This can be done either by creating a hybrid core that is able to run like the current one and on a bare Linux kernel or a switch needs to be added that chooses the target on build time.
+		Additionally this code needs to be brought upstream as it cannot be plugged into the source tree like a separate base directory.
+	
+		\section{Implementation}
 	
 	\chapter{Evaluation}
 	
