@@ -137,6 +137,17 @@ DIV=11,
 		It also enables third parties to make their drivers available without the need to recompile the kernel or bring their source code upstream.
 		On the other hand these drivers often lack the quality of the kernel code but still run in its context which introduces a higher risk of errors. \citep{Lameter07}
 		
+		In the scope of the code the kernel has only little structure.
+		It consists of a set of methods that are compiled into a single large object.
+		Any method can see and therefore also call any other and is also able to access any data.
+		There is little to none isolation in terms of information and execution.
+		The only structure that is available are the calling conventions for procedures which have defined interfaces.
+		
+		To the outside the kernel interfaces via system calls.
+		These are defined procedures that can be called from the user space to do certain tasks that require the kernel.
+		When a system call is used, its parameters are put on the stack and a so called trap is executed.
+		This triggers a mode switch into the kernel space where the arguments are taken from the stack and the according operation is executed. \citep{Tanenbaum2001}
+		
 		\section{Microkernels}
 		
 		Micro kernels are the contrary concept to monolithic kernel.
