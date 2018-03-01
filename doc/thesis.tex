@@ -82,48 +82,48 @@ DIV=11,
 
 		\section{Monolithic kernels}
 		
-		Most of the widely used modern operating systems rely on monolithic kernels.
-		A well known example is Linux.
-		This architecture includes a big part of the operating system functionality into the kernel which has implications for software architecture and communication but also security.
-		Systems based on monolithic kernels usually scale well and can use hardware in a large scale with multiple thousand processing units and terrabytes of main memory.
+		The kernel is an operating systems most crucial part.
+		It controls access to the hardware and manages resources.
+		Since it runs with the highest privileges the whole systems security depends on it.
+		Most of the widely used operating systems rely on so called monolithic kernels.
+		Well known examples are Linux and Microsoft Windows.
 		
-		Since all the functionality the kernel provides runs in a single address space communication between processes can be done via shared memory.
-		This results in low overhead for communication and a weak isolation between components.
-		And those within the kernel are even able to access any memory without restrictions.
+		A monolithic kernel implements many drivers and subsystems in the kernel space.
+		This extensive functionality introduces a high complexity with, in the case of Linux, multiple millions lines of code \citep{journals/jss/IsraeliF10}.
+		The whole code is compiled into a single binary that runs in one address space.
+		Within this there exists no isolation between subsystems.
+		On one hand this introduces a good performance.
+		A complex data structure for example can be passed between subsystems by only sharing the pointer to it.
+		On the other this introduces vulnerabilities since a single compromised subsystem can access anything else in the kernel.
 		
-		Monolithic kernels usually integrate all their components and subsystems into a single environment.
-		While this makes communication between them easy it is also a pitfall if one of them fails.
-		In the worst case a failing component is able to make the entire system fail.
-		That is also important for security considerations.
-		A single compromised component, such as networking driver, could infect the complete kernel.
+		An example for this is a vulnerability in a Synaptics touchscreen driver.
+		It leads to a full compromise of the whole kernel by allowing code execution in the kernel space.
+		The result is a full lose of system integrity and confidentiality since the attacker is able to read or modify any part of the operating system. \citep{cve-2017-0581}
 		
-		Due to the high integration monolithic kernels have a high complexity.
-		Linux for example consists of millions of lines of code which may introduce errors.
-		While automatic reviewing methods can be applied there is still a large number of manual reviews required to provide a certain quality.
-		Yet this will not prevent all errors.
+		Figure \ref{kernelvs} shows the large complexity that monolithic kernels incorporate.
+		Anything in the orange marked area is running inside the kernel and therefore in a single address space with no isolation.
+		This also counts for loadable kernel modules.
+		In contrast to their naming they are not modularized from the kernel.
+		They run in the same address space and have the same privileges as the rest of the kernel.
+		This is even more critical since they can be proprietary.
 		
-		There are still ways to modularize monolithic kernels.
-		One part of this is at the source code level.
-		To manage such a complex construct it is required to separate the sources of subsystems and only provide application programming interfaces between each other.
-		
-		Also at the binary level some kind of modularization exists in form of loadable kernel modules.
-		These are parts of the kernel, that run in the same address space but can be loaded at run time.
-		This is required due to the high amount of different devices that need to be supported.
-		Loading all their drivers at start is not always feasible so loading only the ones needed at runtime which reduces the size of the kernel itself.
-		
-		It also enables third parties to make their drivers available without the need to recompile the kernel or bring their source code upstream.
-		On the other hand these drivers often lack the quality of the kernel code but still run in its context which introduces a higher risk of errors. \citep{Lameter07}
-		
-		In the scope of the code the kernel has only little structure.
-		It consists of a set of methods that are compiled into a single large object.
-		Any method can see and therefore also call any other and is also able to access any data.
-		There is little to none isolation in terms of information and execution.
-		The only structure that is available are the calling conventions for procedures which have defined interfaces.
-		
-		To the outside the kernel interfaces via system calls.
+		To interface with the user space a monolithic kernel uses so called syscalls.
 		These are defined procedures that can be called from the user space to do certain tasks that require the kernel.
 		When a system call is used, its parameters are put on the stack and a so called trap is executed.
 		This triggers a mode switch into the kernel space where the arguments are taken from the stack and the according operation is executed. \citep{Tanenbaum2001}
+		
+		Yet due to the high amount of functionality there are plenty of system calls.
+		The Linux kernel counts, depending on the version, between 350 \citep{journals/jss/IsraeliF10} and nearly 400 \citep{syscalls} of them.
+		This introduces a high complexity and a large attack surface.
+		
+		
+		\begin{figure}
+			\centering
+			\def\svgwidth{\textwidth}
+			\input{kernel.pdf_tex}
+			\caption{Comparison: monolithic and micro kernel}
+			\label{kernelvs}    
+		\end{figure}
 		
 		\section{Microkernels}
 		
