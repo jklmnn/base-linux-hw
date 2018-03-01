@@ -24,7 +24,7 @@ DIV=11,
 	\chapter{Introduction}
 		
 	
-                At the present time we are surrounded by devices that run complex software and operating systems.
+        At the present time we are surrounded by devices that run complex software and operating systems.
 		The number of these devices is still rising and their complexity is growing by the increasing amount computational resources, functionalities and interfaces.
 		Also many of these devices are taking over important tasks such as smart locks or even cardiac pacemakers.
 		Since most of these devices are connected to the public Internet they cannot only be accessed by their owners but anyone.
@@ -36,7 +36,7 @@ DIV=11,
 		Since it can access and control the whole system including any user processes a single vulnerability in any of its components could compromise the entire system.
 		
 		Furthermore the quality of this software is often bad.
-		This is especially true for device drivers which have around three to seven times higher error rates than other kernel parts.
+		This is especially true for device drivers which have, according to \citep{Chou:SOSP:01},  around three to seven times higher error rates than other kernel parts.
 		That is even more problematic since drivers also are the majority of the code.
 		While an attacker often needs to find only a single error monolithic kernels often contain thousands of them due to their large code base.
 		
@@ -47,62 +47,39 @@ DIV=11,
 		
 		A first step to mitigate this problem would be the usage of user level drivers.
 		The user level is a less privileged mode than the kernel mode.
-		It runs most of the software on a system including all conventional end user applications and has certain security boundaries such as user permissions or device access restrictions.
+		It runs most of the software on a system including all conventional end user applications.
+		Also while the kernel is able to access any resource like physical memory a process running in the user mode cannot.
+		It is limited to its own address range in memory and can access other resources only through the kernel.
 		This would not solve the problems based on the errors in the software itself but it would lower their privileges.
 		A compromised driver would not be able to access and control the whole system but only a part of it.
 		
-		To benefit from user space drivers certain requirements need to be fulfilled.
-		The driver must run completely inside the user space without any exceptions.
-		At the point where it needs to run its own code inside the kernel any security advantage is gone since an attacker could escalade its privileges.
+		Unfortunately user space drivers on Linux are quite uncommon.
+		While some approaches exist, such as FUSE \citep{fuse} or Userspace IO (UIO) \citep{uio} they are still limited.
+		UIO for example requires a loadable kernel module for each driver which still adds complexity to the kernel instead of taking it away.
+		FUSE only implements file system drivers and does not have access to any hardware resources.
 		
-		% no kernel modifications 
-		A second requirement are kernel interfaces that allow drivers to work completely without any further modifications to the kernel.
-		This is founded on two reasons.
-		First it improves operability as drivers can be loaded or patched without any influence on the kernel itself.
-		Second, and more importantly, they cannot introduce further errors to the kernel.
-		Any modification, even if it is only a small one done to interface with a driver can cause bugs that could compromise the security of the entire system.
-		To prevent this the kernel needs to stay untouched.
+		A solution to this problem are micro kernels.
+		They implement only the minimally required functionality inside the kernel which reduces their complexity.
+		This includes the management of memory and hardware access.
+		They do not implement drivers which are responsible for a high amount of the complexity and errors in monolithic systems. \citep{Chou:SOSP:01}
 		
-		If an existing kernel, such as Linux, is used to fulfil these needs a suitable interface needs to be added which is then used by the drivers.
-		This interface of course is itself a modification to the kernel and needs to be treated as security relevant code.
-		Yet it is still much smaller than the drivers it is meant to move to the user space.
+		Based on micro kernels drivers are implemented in the user space.
+		This lowers their privileges and isolates them from each other.
+		The Genode OS Framework is an implementation of this concept. 
+		It is a component based system that runs on different micro kernels such as NOVA or seL4.
+		It realizes a strict separation of its components and only allows a defined communication between them.
 		
-		% updates ?
-%		These facts raise the question if we can trust these devices.
-%		Many cases in the present have shown that nearly all of these devices have security issues.
-%		Since the used systems are too complex to guarantee the absence of software errors the common practice is patching these devices when an error has been discovered.
-%		Unfortunately the approach of fixing errors has not proven reliable.
-%		Updates are often not or only for a short time available and often do not find their way to the end user.
+		On the other hand micro kernels often do not support less used or exotic platforms.
+		Porting them to a new unsupported platform requires a high effort and needs time.
+		Linux however often supports them well and is the only choice for some of them.
+		It also comes with good debugging facilities which is an important part for driver development.
 		
-		% component based systems
-%		A difference to this practice are sectors where manufacturers are liable for the correctness of their products including software parts.
-%		This can be achieved by enforcing specific work flows that reduce error probabilities and intensive testing.
-%		But also verification with formal and mathematical methods can be used diminish the rate of faults.
-%		
-%		While this seems to be a solution to the current problems this approach is far from being scalable enough.
-%		Comprehensive testing requires a high amount of resources that often is not available or economically reasonable.
-%		Also verification requires an even higher effort and for many large projects it is far from being possible.
-%		This leads to the question how the high complexity of current applications can be combined with the trustiness of comprehensively tested and verified software.
-%		
-%		That is the point where component based systems have their use case.
-%		They separate the untrusted parts of the software from each other while providing defined ways for them to communicate with each other.
-%		The component based system itself does not implement any functionality beside separation and enforcement of policies.
-%		This allows a small trusted code base that is able to be verified and tested.
-%		
-%		The software components themselves do not need to be trusted any more.
-%		Due to the separation a fault or security issue does only affect a single component and cannot spread across other applications.
-%		To enforce this behaviour through all parts of the system the architecture is based on a micro kernel.
-%		
-%		Most of the common operating systems use a monolithic kernel.
-%		This means that all drivers run in the kernel space.
-%		Not only hardware accessing parts are included there but also file systems and networking stacks.
-%		This leads to the problem that if only one of these drivers is compromised it can access the whole kernel and therefore the complete system.
-%		All security assumptions in the user space are invalid from this point.
+		The goal of this thesis is the combination of the advantages of both Linux and Genode.
+		While it already runs on Linux there is no support for hardware access and device drivers yet.
+		Even though Linux is highly complex stripping away its kernel drivers and run them through Genode in the user space increases security while still keeping the good platform support.
 		
 	\chapter{Background}
 
-		
-		
 		\section{Monolithic kernels}
 		
 		Most of the widely used modern operating systems rely on monolithic kernels.
@@ -358,6 +335,24 @@ DIV=11,
 		Furthermore general conditions such as the kernels complexity and the integration of these concepts into Genode are discussed.
 		
 		\section{Requirements}
+		
+		% no kernel modifications 
+		
+		To benefit from user space drivers certain requirements need to be fulfilled.
+		The driver must run completely inside the user space without any exceptions.
+		At the point where it needs to run its own code inside the kernel any security advantage is gone since an attacker could escalade its privileges.
+		
+		A second requirement are kernel interfaces that allow drivers to work completely without any further modifications to the kernel.
+		This is founded on two reasons.
+		First it improves operability as drivers can be loaded or patched without any influence on the kernel itself.
+		Second, and more importantly, they cannot introduce further errors to the kernel.
+		Any modification, even if it is only a small one done to interface with a driver can cause bugs that could compromise the security of the entire system.
+		To prevent this the kernel needs to stay untouched.
+		
+		If an existing kernel, such as Linux, is used to fulfil these needs a suitable interface needs to be added which is then used by the drivers.
+		This interface of course is itself a modification to the kernel and needs to be treated as security relevant code.
+		Yet it is still much smaller than the drivers it is meant to move to the user space.
+		%%%
 		
 		The general low level resources that are used to communicate with hardware are I/O ports, I/O memory and interrupts.
 		While the first one is x86 specific the others can be found on many different architectures.
