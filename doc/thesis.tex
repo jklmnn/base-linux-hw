@@ -779,7 +779,19 @@ menuentry 'Genode on Linux' {
 		\end{lstlisting}
 		
 		%initramfs
+		When Linux boots it loads the initial RAM file system (\texttt{initramfs}).
+		This is a cpio archive that contains a basic file system which is used to bootstrap the system.
+		When the kernel loads the \texttt{initramfs} it executes a file called \texttt{init} which is located under \texttt{/}.
+		This file is started as the first process and does basic initialization such as mounting further file systems and starting services.
 		
+		When booting Genode all files are contained in the created archive.
+		Since Genode also knows a binary called \texttt{init} it resides in a subdirectory called \texttt{genode}.
+		Beside the required files the \texttt{initramfs} used for Genode contains an empty \texttt{tmp} directory that is used for pipes and an empty \texttt{dev} directory which is populated by the kernel via \texttt{devtmpfs} and provides an interface for special devices under Linux.
+		
+		The \texttt{init} binary that is used in this scenario was written from scratch.
+		It is responsible for loading the required kernel modules.
+		To start Genode it changed into the \texttt{genode} directory and executes the \texttt{core} binary via \texttt{execve}.
+		This results in Genodes core component running as init process under Linux.
 		
 		\subsection{hwiodev}
 		
