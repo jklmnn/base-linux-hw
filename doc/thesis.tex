@@ -845,6 +845,143 @@ menuentry 'Genode on Linux' {
 		
 		\subsection{hwiodev}
 		
+		To provide hardware resources and overcome limitations of existing mechanisms a custom kernel module has been implemented.
+		The used concept has been explained in section \ref{hwio}.
+		It consists of a character special device that can be configured via an ioctl call.
+		
+		A character device on Linux is a module that behaves like a file and lets the user access its content as a byte stream.
+		When loaded and registered by the kernel it is accessible via a file in \texttt{/dev}.
+		Character devices usually implement the basic file access syscalls like \texttt{open}, \texttt{read} and \texttt{write}.
+		Yet it can also make the whole content available at once via \texttt{mmap}.
+		Also a custom \texttt{ioctl} can be defined and the implemented in the kernel module. \citep{books/daglib/0012446}
+		
+		The \texttt{hwio} module implements \texttt{open} and \texttt{close} to manage the required memory structures and \texttt{ioctl} and \texttt{mmap} to configure and use the device.
+		The implementation is based on \texttt{/dev/mem} \citep{devmem}.
+		Yet unneeded parts of it, such as \texttt{read} and \texttt{write} have been omitted.
+		On the other hand it has been extended with functionality to configure and constrain accessible memory regions for each file descriptor.
+		
+		
+		An example how a mapping of a physical memory range is done with this kernel module is given in listing \ref{usehwio}.
+		It shows how the VGA character frame buffer which is located at address \texttt{0xb8000} and has a size of 4kB is mapped and used.
+		First the device file located under \texttt{/dev/hwio} is opened.
+		In this state nothing can be mapped any any call to \texttt{mmap} would fail with a permission error.
+		
+		The configuration is done through a custom defined system call that is implemented by the module.
+		The \texttt{MMIO\_SET\_RANGE} macro is used to tell the driver that a physical address range is now configured.
+		The type struct \texttt{mmio\_range\_t} consists of two fields that specify the physical address and the size of the region that is supposed to be mapped.
+		After this is done in line 22 of listing \ref{usehwio} it cannot be changed any more.
+		
+		The mapping itself is done via an call to \texttt{mmap} in line 24.
+		Here the second and the last argument passed to \texttt{mmap} are important.
+		The second one is the size of the mapping that cannot exceed what has been configured earlier.
+		If this constraint is violated \texttt{mmap} will return with an error.
+		The last argument is the offset at which the mapping should start.
+		In this implementation the offset zero is counted from the physical address that has been configured before.
+		Calling \texttt{mmap} with \texttt{0x100} as last argument would start the mapping at \texttt{0x8b100}.
+		In this case the size needs to be reduced to \texttt{0x0f00} since the maximal size always counts from offset zero.
+		
+		If the mapping was successful the file descriptor can be closed.
+		The acquired virtual address which is stored in \texttt{vga\_address} in this example can be used to do operations on this memory range.
+		This could be an implementation of a VGA driver for example.
+		
+		\lstset{language=C,
+			caption={Using hwiodev},
+			label=usehwio,
+			breaklines=true,
+			numbers=left,
+			stepnumber=1}
+		\begin{lstlisting}
+#include <hwio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
+
+#define MMIO_SET_RANGE _IOW('g', 1, mmio_range_t*)
+
+typedef struct {
+	unsigned long phys;
+	size_t length;
+} mmio_range_t;
+
+int main()
+{
+	int fd;
+	mmio_range_t range = { 0xb8000UL, 0x1000 };
+	void *vga_address;
+	
+	fd = open("/dev/hwio", O_RDWR | O_SYNC);
+	
+	ioctl(fd, MMIO_SET_RANGE, &range);
+	
+	vga_address = mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	
+	close(fd);
+	
+	handle_vga(vga_address);
+	
+	return 0;
+}
+		\end{lstlisting}
+		
+		Internally the module consists of two integral parts, the configuration and check of the memory region and the actual mapping.
+		The latter is only done if all prior checks have succeeded.
+		While the previous example showed the user space side of the system calls the kernel module implements the kernel API which has some differences.
+		\texttt{open} for example takes a string that is the path to the file when called but on the kernel side it gets the pointer to the according inode and a \texttt{struct file} that holds file descriptor specific data.
+		
+		The configuration data requires a place where it can be stored between calls, is unique for each file descriptor and can be accessed if it is needed.
+		The \texttt{struct file} is used to fulfil these requirements in this implementation.
+		First of all it is unique per file descriptor.
+		It is also passed to all required calls, \texttt{open}, \texttt{ioctl}, \texttt{mmap} and \texttt{close}.
+		It also has a field \texttt{private\_data} which is explicitly meant to be used by drivers to store custom data.
+		
+		When \texttt{open} is called it allocates a \texttt{mmio\_range\_t} object with \texttt{kmalloc} on the \texttt{private\_data} of the file structure.
+		This internal object is defined equally to the one at line 9 in listing \ref{usehwio}.
+		Both the physical address and the length are set to zero.
+		
+		The implementation of \texttt{ioctl} gets, beside the file structure, a command and a pointer to further arguments passed.
+		First it checks if the values set in the private data are zero.
+		If this is not the case the file descriptor has been configured before.
+		Since it is not allowed to do this a second time the function returns an error at this point.
+		If it is still zero, the command is checked.
+		Only the one defined at line 7 in listing \ref{usehwio} is implemented.
+		If any other value is passed, \texttt{ioctl} will return an invalid argument error.
+		In the correct case the structure the last argument points to is copied to the private data.
+		The copying is explicitly needed since the argument resides in the user space and all other data structures are in the kernel space.
+		As a last step the range is extended to the size of a multiple of full physical pages since this is the smallest portion of memory that can be mapped.
+		
+		Once this is done \texttt{mmap} can be called.
+		This part is only important for the actual mapping.
+		The checks are done on the byte ranges.
+		They consist of two parts.
+		First they check against the constraints set with \texttt{ioctl}.
+		If the no range is configured or the mapping is not completely inside the allowed range an error is returned.
+		This does not only account the size but also the location of the mapping.
+		A small range at the end of the allowed memory region can also exceed the upper boundary and is therefore not allowed.
+		
+		The second part of the checks applies some general constraints.
+		One of them validates that only I/O memory, which is used for devices, can be mapped.
+		This prevents that a process can access arbitrary physical memory and therefore also memory that is used by other processes or by the kernel.
+		Since kernel version 2.6.26 this configuration called \texttt{CONFIG\_STRICT\_DEVMEM} is available and enabled by default \citep{devmem}.
+		
+		When the file descriptor is closed via \texttt{close} or due to the last process holding it exiting \texttt{close} is called.
+		It does nothing more than freeing the private memory allocated in \texttt{open}.
+		
+		To be able to map memory, the \texttt{mmap} implementation gets a virtual memory area (VMA) passed.
+		It describes a virtual address range that the memory shall be mapped to.
+		It contains a \texttt{vm\_start} and an \texttt{vm\_end} field that describe the start and the end of the mapping inside the virtual memory.
+		The difference between those values yields the size of the mapping.
+		The checks described previously are done against this size.
+		The \texttt{vm\_pgoff} field contains the offset measured in pages of physical memory.
+		Since \texttt{mmap} was called with offset zero this value needs to be set accordingly.
+		Also as the offset which is stored in the private data is a byte offset it has to be translated to a page offset.
+		Since on x86 pages are 4 Kilobytes large the address from the example \texttt{0xb8000} gets translated to page \texttt{0xb8}.
+		
+		When the preparation is done the memory is mapped via \texttt{remap\_pfn\_range}.
+		This function takes the virtual memory area and maps the requested physical memory to it.
+		It is explicitly designed to remap kernel memory to the user space and sets the correct flags for this memory to be used for I/O operations.
+		The resulting virtual address is not accessible in the kernel module since it resides in the user space but is returned by the \texttt{mmap} call.
+		
 		\subsection{Session implementation}
 		
 		\subsection{Platform info}
