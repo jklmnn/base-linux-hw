@@ -100,7 +100,7 @@ DIV=11,
 		It leads to a full compromise of the whole kernel by allowing code execution in the kernel space.
 		The result is a full lose of system integrity and confidentiality since the attacker is able to read or modify any part of the operating system. \citep{cve-2017-0581}
 		
-		Figure \ref{kernelvs} shows the large complexity that monolithic kernels incorporate.
+		Figure \ref{monolithickernel} shows the large complexity that monolithic kernels incorporate.
 		Anything in the orange marked area is running inside the kernel and therefore in a single address space with no isolation.
 		This also counts for loadable kernel modules.
 		In contrast to their naming they are not modularized from the kernel.
@@ -120,9 +120,9 @@ DIV=11,
 		\begin{figure}
 			\centering
 			\def\svgwidth{\textwidth}
-			\input{kernel.pdf_tex}
-			\caption{Comparison: monolithic and micro kernel}
-			\label{kernelvs}    
+			\input{monolithic.pdf_tex}
+			\caption{Monolithic kernel system architecture}
+			\label{monolithickernel}    
 		\end{figure}
 		
 		\section{Microkernels}
@@ -165,6 +165,14 @@ DIV=11,
 		Interrupts are incorporated by empty IPC messages.
 		They are sent from threads that have special ids which map to hardware interrupt ids.
 		The receiving thread can conclude to the triggered interrupt by the source id. \citep{Liedtke_1995}
+		
+		\begin{figure}
+			\centering
+			\def\svgwidth{\textwidth}
+			\input{micro.pdf_tex}
+			\caption{Micro kernel system architecture}
+			\label{microkernel}    
+		\end{figure}
 		
 		\section{Genode}
 		
