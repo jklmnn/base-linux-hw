@@ -50,23 +50,24 @@
   \makeatother%
   \begin{picture}(1,0.25218914)%
     \put(0,0){\includegraphics[width=\unitlength,page=1]{mapping.pdf}}%
-    \put(0.12259194,0.19844133){\makebox(0,0)[b]{\smash{Physical memory}}}%
+    \put(0.12224169,0.19894921){\makebox(0,0)[b]{\smash{Physical memory}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=2]{mapping.pdf}}%
-    \put(0.12259194,0.15115587){\makebox(0,0)[b]{\smash{0x0000 - 0x0999}}}%
+    \put(0.12224169,0.15166375){\makebox(0,0)[b]{\smash{0x0000 - 0x0999}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=3]{mapping.pdf}}%
-    \put(0.12259194,0.10562171){\makebox(0,0)[b]{\smash{0x1000 - 0x1999}}}%
+    \put(0.12224169,0.10612959){\makebox(0,0)[b]{\smash{0x1000 - 0x1999}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=4]{mapping.pdf}}%
-    \put(0.12259194,0.06008756){\makebox(0,0)[b]{\smash{0x2000 - 0x2999}}}%
+    \put(0.12224169,0.06059544){\makebox(0,0)[b]{\smash{0x2000 - 0x2999}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=5]{mapping.pdf}}%
-    \put(0.52539405,0.22120841){\makebox(0,0)[b]{\smash{Task 1}}}%
+    \put(0.52504376,0.22171629){\makebox(0,0)[b]{\smash{Task 1}}}%
     \put(0.52539405,0.17513135){\makebox(0,0)[b]{\smash{0x000 - 0x799}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=6]{mapping.pdf}}%
-    \put(0.52539405,0.06183887){\makebox(0,0)[b]{\smash{Task 2}}}%
+    \put(0.52504376,0.06234676){\makebox(0,0)[b]{\smash{Task 2}}}%
     \put(0.52539405,0.01576182){\makebox(0,0)[b]{\smash{0x000 - 0x999}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=7]{mapping.pdf}}%
-    \put(0.87565674,0.1301401){\makebox(0,0)[b]{\smash{Child 1}}}%
+    \put(0.87530646,0.13064798){\makebox(0,0)[b]{\smash{Child 1}}}%
     \put(0.87565674,0.08406305){\makebox(0,0)[b]{\smash{0x000 - 0x799}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=8]{mapping.pdf}}%
-    \put(0.52539405,0.12838879){\makebox(0,0)[b]{\smash{0x800 - 0x999}}}%
+    \put(0.52504376,0.12889667){\makebox(0,0)[b]{\smash{0x800 - 0x999}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=9]{mapping.pdf}}%
   \end{picture}%
 \endgroup%

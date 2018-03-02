@@ -48,23 +48,24 @@
   \global\let\svgwidth\undefined%
   \global\let\svgscale\undefined%
   \makeatother%
-  \begin{picture}(1,0.52247191)%
+  \begin{picture}(1,0.46629213)%
     \put(0,0){\includegraphics[width=\unitlength,page=1]{micro.pdf}}%
-    \put(0.49803372,0.0483146){\makebox(0,0)[b]{\smash{Hardware}}}%
+    \put(0.49803372,0.02022471){\makebox(0,0)[b]{\smash{Hardware}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=2]{micro.pdf}}%
-    \put(0.49803372,0.17471909){\makebox(0,0)[b]{\smash{Kernel}}}%
+    \put(0.49803372,0.11853932){\makebox(0,0)[b]{\smash{Kernel}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=3]{micro.pdf}}%
-    \put(0.62443821,0.42752809){\makebox(0,0)[b]{\smash{Drivers}}}%
+    \put(0.62443821,0.37134832){\makebox(0,0)[b]{\smash{Drivers}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=4]{micro.pdf}}%
-    \put(0.87724716,0.44719101){\makebox(0,0)[b]{\smash{File}}}%
-    \put(0.87724716,0.40786517){\makebox(0,0)[b]{\smash{systems}}}%
+    \put(0.87724716,0.39101124){\makebox(0,0)[b]{\smash{File}}}%
+    \put(0.87724716,0.3516854){\makebox(0,0)[b]{\smash{systems}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=5]{micro.pdf}}%
-    \put(0.37162922,0.42752809){\makebox(0,0)[b]{\smash{Networking}}}%
+    \put(0.37162922,0.37134832){\makebox(0,0)[b]{\smash{Networking}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=6]{micro.pdf}}%
-    \put(0.11882022,0.44719101){\makebox(0,0)[b]{\smash{User}}}%
-    \put(0.11882022,0.40786517){\makebox(0,0)[b]{\smash{applications}}}%
+    \put(0.11882022,0.39101124){\makebox(0,0)[b]{\smash{User}}}%
+    \put(0.11882022,0.3516854){\makebox(0,0)[b]{\smash{applications}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=7]{micro.pdf}}%
-    \put(0.5,0.30337079){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{User space}}}%
-    \put(0.5,0.24719101){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{Kernel space}}}%
+    \put(0.89325843,0.24438202){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{User space}}}%
+    \put(0.87921348,0.19101124){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{Kernel space}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=8]{micro.pdf}}%
   \end{picture}%
 \endgroup%

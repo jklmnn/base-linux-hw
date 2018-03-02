@@ -48,26 +48,35 @@
   \global\let\svgwidth\undefined%
   \global\let\svgscale\undefined%
   \makeatother%
-  \begin{picture}(1,0.72677596)%
+  \begin{picture}(1,0.67213115)%
     \put(0,0){\includegraphics[width=\unitlength,page=1]{monolithic.pdf}}%
-    \put(0.49863388,0.04644809){\makebox(0,0)[b]{\smash{Hardware}}}%
+    \put(0.49863388,0.01912568){\makebox(0,0)[b]{\smash{Hardware}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=2]{monolithic.pdf}}%
-    \put(0.49863388,0.17486339){\makebox(0,0)[b]{\smash{Kernel}}}%
+    \put(0.49863388,0.12021858){\makebox(0,0)[b]{\smash{Kernel}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=3]{monolithic.pdf}}%
-    \put(0.13114754,0.31420765){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{Drivers}}}%
+    \put(0.13114754,0.25956284){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{Drivers}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=4]{monolithic.pdf}}%
-    \put(0.37568306,0.33879781){\makebox(0,0)[b]{\smash{File}}}%
-    \put(0.37568306,0.30054645){\makebox(0,0)[b]{\smash{systems}}}%
+    \put(0.37568306,0.28415301){\makebox(0,0)[b]{\smash{File}}}%
+    \put(0.37568306,0.24590164){\makebox(0,0)[b]{\smash{systems}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=5]{monolithic.pdf}}%
-    \put(0.6215847,0.33879781){\makebox(0,0)[b]{\smash{Kernel}}}%
-    \put(0.6215847,0.30054645){\makebox(0,0)[b]{\smash{modules}}}%
+    \put(0.6215847,0.28415301){\makebox(0,0)[b]{\smash{Kernel}}}%
+    \put(0.6215847,0.24590164){\makebox(0,0)[b]{\smash{modules}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=6]{monolithic.pdf}}%
-    \put(0.49863388,0.65300546){\makebox(0,0)[b]{\smash{User}}}%
-    \put(0.49863388,0.6147541){\makebox(0,0)[b]{\smash{applications}}}%
+    \put(0.13114754,0.59836066){\makebox(0,0)[b]{\smash{User}}}%
+    \put(0.13114754,0.56010929){\makebox(0,0)[b]{\smash{applications}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=7]{monolithic.pdf}}%
-    \put(0.86748634,0.31967213){\makebox(0,0)[b]{\smash{Networking}}}%
+    \put(0.86748634,0.26502732){\makebox(0,0)[b]{\smash{Networking}}}%
     \put(0,0){\includegraphics[width=\unitlength,page=8]{monolithic.pdf}}%
-    \put(0.5,0.51092896){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{User space}}}%
-    \put(0.5,0.45628415){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{Kernel space}}}%
+    \put(0.89617486,0.46448087){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{User space}}}%
+    \put(0.88251366,0.40163934){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{Kernel space}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=9]{monolithic.pdf}}%
+    \put(0.37704918,0.59836066){\makebox(0,0)[b]{\smash{User}}}%
+    \put(0.37704918,0.56010929){\makebox(0,0)[b]{\smash{applications}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=10]{monolithic.pdf}}%
+    \put(0.62295082,0.59836066){\makebox(0,0)[b]{\smash{User}}}%
+    \put(0.62295082,0.56010929){\makebox(0,0)[b]{\smash{applications}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=11]{monolithic.pdf}}%
+    \put(0.86885246,0.59836066){\makebox(0,0)[b]{\smash{User}}}%
+    \put(0.86885246,0.56010929){\makebox(0,0)[b]{\smash{applications}}}%
   \end{picture}%
 \endgroup%
