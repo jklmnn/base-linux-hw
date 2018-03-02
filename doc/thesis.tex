@@ -93,12 +93,14 @@ DIV=11,
 		The whole code is compiled into a single binary that runs in one address space.
 		Within this there exists no isolation between subsystems.
 		On one hand this introduces a good performance.
-		A complex data structure for example can be passed between subsystems by only sharing the pointer to it.
+		A complex data structure such as a linked list for example can be passed between subsystems by only sharing the pointer to it.
+		Otherwise it would be required to deserialize, copy and the serialize it which comes with relevant overhead.
 		On the other this introduces vulnerabilities since a single compromised subsystem can access anything else in the kernel.
 		
 		An example for this is a vulnerability in a Synaptics touchscreen driver.
-		It leads to a full compromise of the whole kernel by allowing code execution in the kernel space.
-		The result is a full lose of system integrity and confidentiality since the attacker is able to read or modify any part of the operating system. \citep{cve-2017-0581}
+		In this case which emerged in 2017 on Android it is possible escalade execution privileges to the kernel space from the driver process.
+		This leads to a full compromise of the whole kernel by allowing code execution in the kernel space.
+		The attacker is then able to read any data from the device including passwords and files on the internal storage and execute any code to manipulate network traffic for example. \citep{cve-2017-0581}
 		
 		Figure \ref{monolithickernel} shows the large complexity that monolithic kernels incorporate.
 		Anything in the orange marked area is running inside the kernel and therefore in a single address space with no isolation.
@@ -108,7 +110,8 @@ DIV=11,
 		This is even more critical since they can be proprietary.
 		
 		To interface with the user space a monolithic kernel uses so called syscalls.
-		These are defined procedures that can be called from the user space to do certain tasks that require the kernel.
+		These are defined procedures that can be called from the user space to do tasks that require the kernel.
+		This could be simply opening a file but also mapping I/O memory and manipulating hardware.
 		When a system call is used, its parameters are put on the stack and a so called trap is executed.
 		This triggers a mode switch into the kernel space where the arguments are taken from the stack and the according operation is executed. \citep{Tanenbaum2001}
 		
@@ -125,32 +128,61 @@ DIV=11,
 			\label{monolithickernel}    
 		\end{figure}
 		
-		\section{Microkernels}
+		\section{Micro kernels}
 		
-		Micro kernels are the contrary concept to monolithic kernel.
-		Their goal is, in simple terms, to remove as much functionality as possible from the kernel and implement it outside of it.
+		Micro kernels aim to implement as few functionality as possible inside the kernel.
+		Their task is to isolate user space components from each other.
+		The kernel implements message passing mechanisms to allow communication between these and enforces policies that describe the allowed routes of communication.
 		This aims to make the system highly modularizable and isolate failures in components from the rest of the system.
 		
-		As a general requirement a micro kernel should only functionality that would be impossible to implement outside the kernel.
+		Micro kernels are used on embedded chips.
+		Apples A-Series processors contain a coprocessor called Secure Enclave.
+		It is responsible for cryptographic operations and key management and has to maintain the protection of the keys even if the system running on the application processor is compromised.
+		It uses a customized version of the L4 micro kernel \citep{ios11sec} \citep{Heiser:2016:LML:2912578.2893177}.
+		
+		Although virtualisation is often associated with large scaled servers it is also used on embedded devices.
+		In this context micro hypervisors such as NOVA \citep{Steinberg:2010:NMS:1755913.1755935} are used.
+		These are specialized micro kernels that make use of the virtualisation technologies available on many platforms to run multiple systems isolated from each other. \citep{ibmvirt}
+		
+		As a general requirement a micro kernel should only functionality that would be infeasible to implement outside the kernel.
 		It also has to separate and protect applications from itself and each other.
 		Any component that runs on a micro kernel must not be influenced by any other. And if two components communicate between each other the communication must be secure in regards of confidentiality and integrity.
 		
-		These requirements are met by different concepts.
-		One of them are address spaces which are mappings from physical to virtual memory pages.
-		These are given recursively to child subsystems.
-		The first subsystem owns the whole physical memory in a single address space from where it can grant parts of it to another subsystem.
-		Its own access to this page is then removed.
-		If it wants to keep this space, for example to employ shared memory, it can map the space to the other subsystem.
+		To fulfil these requirements a micro kernel based system consists of tasks that run in the user space.
+		As shown in figure \ref{microkernel} they are isolated from each other but can communicate via IPC with each other and the kernel.
+		Each task owns an address space which only itself can access.
+		Since they cannot influence each other the goal of isolation is satisfied.
+		Any communication between them is done via IPC.
+		
+		A task is the representation of a thread or process.
+		It is characterized through its own state including its address space, stack pointer and instruction pointer.
+		Any changes the thread applies to its address space are controlled by the kernel.
+		Yet it is able to create a child that can inherit parts of its resources.
+		The parent looses access to anything it grants to the child regains it once the it is terminated.
+		Since the child itself can spawn new children a tree like structure can emerge.
+		
+		Address spaces are mappings from physical to virtual memory pages.
+		The kernel takes a page of physical memory and assigns it to a task.
+		The assigned pages get their own address range each making this process transparent to the task.
+		Figure \ref{mapping} shows that each task only can see its virtual addresses and does know neither which physical memory it possesses nor where other tasks are located.
+		The assignment and management of these mappings is done by the kernel.
+		
+		If a task spawns a child it passes a part of its own to the child.
+		It also looses access to this memory.
+		In figure \ref{mapping} the first task spawns a child which gets the parents second half of the memory.
+		The child itself cannot conclude from this to the physical or its parents memory location and size.
+		If the parent wants to keep this space, for example to employ shared memory, it can map the space to the other subsystem.
 		To reverse the mapping the according address space can be flushed removing it from all other subsystems except the flushing one.
 		The managing of these operations is done in the kernel itself.
 		While I/O memory is a does not necessarily represent physical main memory it is also managed in this context.
 		
-		%threads...
-		The activity that happens in such an address space is called a thread.
-		It is characterized through its own state including its address space, stack pointer and instruction pointer.
-		Any changes the thread applies to its address space are controlled by the kernel.
-		Also it cannot access address spaces of other threads.
-		To be able to communicate inter process communication is used and therefore must be supported by the kernel.
+		\begin{figure}
+			\centering
+			\def\svgwidth{\textwidth}
+			\input{mapping.pdf_tex}
+			\caption{Mapping physical to virtual memory}
+			\label{mapping}    
+		\end{figure}
 		
 		Inter process communication (IPC) is a defined way for two threads to communicate with each other.
 		While both parties must agree to the transmission the sender controls the content while the receiver has to handle it.
