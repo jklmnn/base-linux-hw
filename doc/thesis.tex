@@ -353,6 +353,8 @@ DIV=11,
 		
 		\section{Fuse}
 	
+		% TODO
+	
 	\chapter{Design and Implementation}
 	
 		Modern System access their hardware through different channels.
@@ -377,6 +379,7 @@ DIV=11,
 		\section{Requirements}
 		
 		% no kernel modifications 
+		% TODO
 		
 		To benefit from user space drivers certain requirements need to be fulfilled.
 		The driver must run completely inside the user space without any exceptions.
@@ -592,6 +595,8 @@ DIV=11,
 		Yet the access to only device memory ranges, but all of them, is still insufficient as a driver should only access the ranges its parent allowed it to.
 		This leads to the requirement of a more constrainable and controllable access mechanism.
 		
+		%TODO explain exact constrain requirements
+		
 		\subsection{Memory device}
 		
 		The easiest would be using \texttt{/dev/mem} which already has mapped all physical memory into the user space.
@@ -663,6 +668,8 @@ DIV=11,
 		This and the control over the devices implementation allow a constraint to the memory that can be mapped while on the other hand having no dependencies beside \texttt{/dev}.
 		It also can be built as a kernel module which makes it loadable at run time. \citep{ioctl}
 		
+		%TODO explain that this has been chosen and why
+		
 		\section{Interrupts}
 		
 		Interrupts are asynchronous events sent by external devices.
@@ -706,6 +713,7 @@ DIV=11,
 		
 		\section{Complexity}
 		
+		%TODO put this in a better place / rework
 		With security assumptions in mind enabling resource access for the user space is not the only requirement.
 		The Linux kernel is a complex construct with millions of lines of code.
 		To reduce this complexity as much unnecessary functionality as possible needs to be removed.
@@ -743,6 +751,8 @@ DIV=11,
 		Since it requires modifications of the original base-linux core the current functionality needs to be maintained.
 		This can be done either by creating a hybrid core that is able to run like the current one and on a bare Linux kernel or a switch needs to be added that chooses the target on build time.
 		Additionally this code needs to be brought upstream as it cannot be plugged into the source tree like a separate base directory.
+		
+		%TODO explain that this has been chosen and why
 	
 		\section{Implementation}
 		
