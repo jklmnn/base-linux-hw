@@ -351,7 +351,47 @@ DIV=11,
 		The BSD kernel makes USB devices accessible to the user space via \texttt{ugen} the USB generic device support.
 		The rump kernel implementation of the USB driver allows to configure the access to specific USB devices at compile time. \citep{kantee} \citep{ugen}
 		
-		\section{Fuse}
+		\section{Filesystem in user space}
+		
+		The Filesystem in User Space (FUSE) \citep{fuse} is a framework to implement filesystem drivers as user space applications.
+		It is mainly supported on Linux but also available for BSD and OS X.
+		While there also exist other user space file systems FUSE is the most widely used one \citep{202324}.
+	
+		FUSE consists of a kernel and a user space part.
+		Inside the kernel it acts as a proxy between its user space interface and the Linux virtual filesystem switch (VFS) \citep{202324}.
+		The VFS is an abstraction layer that allows different file systems to be used transparently from the user space.
+		It defines an internal API that file systems have to implement.
+		It also hides details about the device providing the storage.
+		To an application using this file system is makes no difference whether the storage device is a hard disk or a network storage.
+		To the user space it provides the POSIX API so any application can modify files through \texttt{open}, \texttt{read} and \texttt{write} for example. \citep{ibmvfs}
+		
+		\begin{figure}
+			\centering
+			\def\svgwidth{\textwidth}
+			\input{fuse.pdf_tex}
+			\caption{FUSE architecture \citep{202324}}
+			\label{fusearch}
+		\end{figure}
+	
+		The FUSE kernel driver provides a bridge between the user space and the VFS kernel layer.
+		It registers FUSE filesystems to the VFS.
+		On the other side it provides a \texttt{/dev/fuse} block device that is used by the user space FUSE daemon. It takes requests through this device, processes them and returns the result \citep{202324}.
+		The deamon which runs in the user space is the interface to filesystem implementations.
+		They can access it by using libfuse \citep{fuse}.
+		
+		Figure \ref{fusearch} depicts the structure of FUSE.
+		When a file is opened by an application that request is passed to the kernels VFS.
+		It decides which filesystem should process that request.
+		In case of FUSE it is forwarded to the FUSE driver that relays it to the user space daemon.
+		At this point it is forwarded to the actual driver implementation might it be a block or a network device.
+		The answer from the driver is then passed back through these instances to the application. \citep{202324}
+		
+		This concept already implements a generic interface for filesystems in the user space.
+		Only a single kernel module is required and no filesystem specific code is executed in the kernel space.
+		On the other hand it only applies to file systems.
+		It does not provide an interface to any other type of driver.
+		This is due to the interfacing between the daemon and the kernel module that relies on a custom protocol.
+		It defines requests of filesystem specific types for example \texttt{lookup}, \texttt{open} or \texttt{opendir} \citep{202324}.
 	
 		% TODO
 	
