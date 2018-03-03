@@ -295,16 +295,8 @@ DIV=11,
 	
 	\chapter{Related work}
 		
-		\section{User space drivers on Linux}
+		\section{User space I/O on Linux}
 		
-		There have already been different approaches on using suer space drivers on Linux.
-		A, in the Linux world widely known, project is Filesystem in Userspace (FUSE).
-		It's target is to provide users with the ability to use custom file systems without the need to require root privileges or edit kernel code.
-		To achieve this FUSE consists of two parts, a kernel module and a user space library.
-		The library communicates with the kernel module to provide the necessary functionality to the user.
-		While this does not access any hardware resources it shows a concept how kernel resources can be accessed from the user space. \citep{fuse}
-		
-		Another approach is Userspace I/O (UIO).
 		UIO addresses industrial systems that often require I/O cards which only need some mapped memory and interrupts.
 		These cards are available as device files on Linux which provide access to the address space of each device.
 		Contrary to FUSE UIO drivers require a small kernel module that deploys access to hardware resources.
@@ -313,6 +305,19 @@ DIV=11,
 		Instead of kernel modules these drivers can use many tools and libraries that are not available in the kernel.
 		Also bugs and crashes of the driver do not influence the kernel itself.
 		While updates of kernel modules often require the recompilation of the kernel or at least a reboot of the system updates of these drivers can be done more easily. \citep{uio}
+		
+		UIO requires a custom kernel module for each driver.
+		It creates a device file called \texttt{/dev/uioX} per I/O card.
+		Mapping the cards memory only requires a call to \texttt{mmap} on the device file.
+		Since some cards provide more than one memory region each device can create multiple mappings.
+		These are addressable in the sysfs \citep{sysfs} under \texttt{/sys/uio/uioX/maps/} \citep{uio}.
+		Interrupts are implemented by blocking \texttt{read} calls on the file.
+		Once an interrupt is triggered the read is released and the according handler is called.
+		To identify missed interrupts a \texttt{read} on this file returns the total interrupt count. \citep{uio}
+		
+		While UIO allows user space drivers it still adds complexity to the kernel since each driver requires its own module.
+		Furthermore each driver adds a complex interface consisting of a directory structure in the sysfs and a special device file.
+		This approach might be useful to implement drivers that require special user space libraries but it is insufficient to provide a generic interface that works without further kernel modifications.
 		
 		\section{Rump kernels}
 		
@@ -393,7 +398,6 @@ DIV=11,
 		This is due to the interfacing between the daemon and the kernel module that relies on a custom protocol.
 		It defines requests of filesystem specific types for example \texttt{lookup}, \texttt{open} or \texttt{opendir} \citep{202324}.
 	
-		% TODO
 	
 	\chapter{Design and Implementation}
 	
