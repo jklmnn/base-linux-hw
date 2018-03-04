@@ -1118,6 +1118,7 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		Since the configuration can only be done once the component is also unable to change that setting.
 		
 		\subsection{Platform info}
+		\label{pinfo}
 		
 		Static information such as binaries is provided as a so called ROM dataspace on Genode.
 		Typical ROM dataspaces are the components, but also the \texttt{config} ROM that contains the configuration of the system.
@@ -1352,7 +1353,20 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		Furthermore it hung at a point that never caused any problems in the virtual machine.
 		Due to the constrained debug methods on this platforms this issue was not further researched.
 	
-	\chapter{Conclusion and future work}
+	\chapter{Conclusion}
+	
+		This thesis shows that it is possible to create a generic interface on Linux to run drivers in the user space.
+		It also shows that this is possible to do this by using a component based user land, such as the Genode OS Framework \citep{genode}.
+		
+		Two basic hardware access mechanisms have been ported to Linux.
+		The evaluation showed that even though the implementation is not yet stable the concepts are working.
+		It was possible to run unaltered Genode drivers on Linux and to create an interface that sufficiently generic to overcome the need of driver specific adaptions to the kernel.
+		
+		On the other hand it showed the conceptual hindrances of using a monolithic kernel in such a way.
+		The best example for this is the \texttt{platform\_info} described in section \ref{pinfo} in combination with regular files being used as read only memory sessions.
+		The usage of a symlinked device file and the manual manipulation of an inode by the module are merely a hack than a robust solution.
+	
+		\section{Future work}
 	
 	\bibliographystyle{unsrtnat}
 	\bibliography{sources}
