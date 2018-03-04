@@ -888,6 +888,7 @@ menuentry 'Genode on Linux' {
 		This results in Genodes core component running as init process under Linux.
 		
 		\subsection{hwiodev}
+		\label{hwiodev}
 		
 		To provide hardware resources and overcome limitations of existing mechanisms a custom kernel module has been implemented.
 		The used concept has been explained in section \ref{hwio}.
@@ -1026,7 +1027,94 @@ int main()
 		It is explicitly designed to remap kernel memory to the user space and sets the correct flags for this memory to be used for I/O operations.
 		The resulting virtual address is not accessible in the kernel module since it resides in the user space but is returned by the \texttt{mmap} call.
 		
-		\subsection{Session implementation}
+		\subsection{Sessions}
+		
+		To make the resources provided by the kernel module available to Genode both the \texttt{IO\_PORT} and \texttt{IO\_MEM} session need to be implemented.
+		Since their interfaces are required to compile Genode on Linux there are already dummy implementations that only emit warnings when used.
+		
+		\subsubsection{IO\_PORT}
+		
+		To use I/O ports on Linux the syscall \texttt{iopl} \citep{iopl} needs to be available.
+		Genode already implements some needed syscalls for example \texttt{mmap} or \texttt{write}.
+		All of them are implemented by using a generic \texttt{lx\_syscall} function that takes the syscall number and the appropriate parameters.
+		To avoid collisions and to denounce the dependency on Linux these syscalls are prepended with \texttt{lx\_}.
+		Listing \ref{lxiopl} shows the implementation of the \texttt{iopl} syscall on Genode using the already available \texttt{lx\_syscall}.
+		
+		\lstset{language=C,
+			caption={\texttt{iopl} syscall on Genode},
+			label=lxiopl,
+			breaklines=true,
+			numbers=left,
+			stepnumber=1}
+		\begin{lstlisting}
+inline int lx_iopl(int level)
+{
+	return lx_syscall(SYS_iopl, level);
+}
+		\end{lstlisting}
+		
+		When an I/O port is used on Genode it is not accessed directly by the component.
+		Instead the request to access is transferred via IPC to the core which then itself runs the required instruction and returns the result to the component.
+		On Linux core and the components are different processes.
+		Only the process calling I/O port instructions which is core in this case requires higher privileges.
+		This means that \texttt{iopl} needs to be called in core.
+		
+		The availability of I/O ports on Genode is selected by the platform services.
+		These are architecture dependent sessions that are selected at compile time.
+		Since Linux originally did not support I/O ports it used the default implementation that did not register any service.
+		As the registration is done in core it is also the correct place to acquire privileges as discussed in the last paragraph.
+		This results in a Linux specific implementation of the platform services that calls \texttt{iopl} and, if the call succeeds, registers the \texttt{IO\_PORT} session.
+		
+		Implementing the actual session consists of two parts.
+		The session support implements the actual accesses to the I/O ports.
+		While on Linux this is done through \texttt{inb} and \texttt{outb} \citep{outb} it is an x86 specific mechanism that is generally used through the assembler instructions \texttt{in} and \texttt{out} \citep{intelmanual2}.
+		Due to this fact the generic I/O port session support was also used for Genode on Linux.
+		
+		The session component implements the component side API.
+		It defines initialization and finalization of a session.
+		Since everything is initialized at this point only an empty implementation is required.
+		
+		\subsubsection{IO\_MEM}
+		
+		The \texttt{IO\_MEM} session has an analogous architecture to the \texttt{IO\_PORT} session.
+		Since it is available on all architectures it is registered with the platform services by default.
+		
+		Memory ranges in Genode are handles by so called dataspaces.
+		On Linux these are implemented by using files.
+		To access a dataspace a capability is required which is a file descriptor.
+		Since the dataspace semantics are already implemented for Linux the generic session support which implements the capability handling can be reused.
+		
+		The session component is responsible to create the dataspace and its capability.
+		It is created by opening \texttt{/dev/hwio} that is described in section \ref{hwiodev}.
+		It then has to constrain the file descriptor using \texttt{ioctl}.
+		This is done based on the parameters the session was opened with.
+		
+		\lstset{language=C,
+			caption={Custom \texttt{ioctl} syscall on Genode},
+			label=lxioctl,
+			breaklines=true,
+			numbers=left,
+			stepnumber=1}
+		\begin{lstlisting}
+inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
+{
+	struct {
+		unsigned long phys;
+		Genode::size_t length;
+	} range = {phys, offset};
+
+	return lx_syscall(SYS_ioctl, fd, _IOW('g', 1, void *), &range);
+}
+		\end{lstlisting}
+		
+		The syscall used for this operation is \texttt{lx\_ioctl\_iomem}.
+		It wraps Linux' \texttt{ioctl} syscall, creates the required data structure and calls it with a compatible \texttt{ioctl} command.
+		The implementation of this specific function is shown in listing \ref{lxioctl}.
+		
+		The configured file descriptor is then passed to the requesting component.
+		Since on Linux a mapping is only valid for the process that has created it the component has to call \texttt{mmap} on the file descriptor itself when it requests the dataspace from the capability.
+		The constrain by the syscall enforces that only the memory that was requested prior can be mapped now.
+		Since the configuration can only be done once the component is also unable to change that setting.
 		
 		\subsection{Platform info}
 	
