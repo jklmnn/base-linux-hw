@@ -805,6 +805,7 @@ DIV=11,
 		Also the Linux kernel needed to be adapted to avoid resource access collisions with drivers running on Genode.
 		
 		\subsection{Booting Genode on Linux}
+		\label{init}
 		
 		The first step was to generate an image that was bootable on Qemu and started Genode on Linux as init process.
 		While there already was a Linux target it did only start Genode on the hosts kernel and ran as a user process on the host.
@@ -1117,6 +1118,91 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		Since the configuration can only be done once the component is also unable to change that setting.
 		
 		\subsection{Platform info}
+		
+		Static information such as binaries is provided as a so called ROM dataspace on Genode.
+		Typical ROM dataspaces are the components, but also the \texttt{config} ROM that contains the configuration of the system.
+		On Linux all files that reside in the same directory as the core binary are included as ROM dataspaces.
+		Analogously to the \texttt{IO\_MEM} dataspace they are accessed through file descriptors which are the capability implementation.
+		
+		A special ROM is the \texttt{platform\_info}.
+		It contains system specific information such as the ACPI \citep{acpi_spec} table addresses and the framebuffer address provided by Multiboot2 \citep{multiboot2}.
+		The data is encoded in XML so it can be parsed easily.
+		An example of a \texttt{platform\_info} providing framebuffer and ACPI information is shown in listing \ref{platforminfo}.
+		Since this is information that is collected at runtime it cannot simply provided by adding a file to the directory.
+		
+		\lstset{language=XMl,
+			caption={Contents of \texttt{platform\_info}},
+			label=platforminfo,
+			breaklines=true,
+			numbers=left,
+			stepnumber=1}
+		\begin{lstlisting}
+<platform_info>
+	<acpi revision="2" rsdt="0x1fe93074" xsdt="0x1fe930e8"/>
+	<boot>
+		<framebuffer phys="0x80000000" width="800" height="600" bpp="32" type="1" pitch="3200"/>
+	</boot>
+</platform_info>
+		\end{lstlisting}
+		
+		On micro kernel based scenarios this information is collected and provided by the kernel.
+		Applied on Linux this requires a further kernel module.
+		It is implemented as a special character device similarly to the \texttt{hwio} module described in section \ref{hwiodev}.
+		Since ROM dataspaces are accessed by mapping their contents it also implements \texttt{mmap}.
+		Yet instead of mapping physical memory it uses locally allocated space.
+		
+		It provides the ACPI data and the framebuffer address.
+		The latter one is taken from the \texttt{screen\_info} structure that contains either text mode or framebuffer information \citep{zeropage}.
+		It has all data required to create the \texttt{platform\_info} framebuffer entry.
+		
+		The information required for the ACPI driver are pointers to the two root tables of ACPI, the Root System Description Table (RSDT) and the Extended System Description Table (XSDT).
+		These pointers are located in the Root System Description Pointer (RSDP) \citep{acpi_spec}.
+		Depending on the boot mode that has been used there are two ways to acquire it.
+		
+		In case of a (U)EFI boot the EFI system tables already contain the RSDP \citep{acpi_spec}.
+		On Linux these are easily accessed by including \texttt{efi.h} and accessing the \texttt{efi} structure.
+		Depending on the ACPI version the physical address of the RSDP is located either in \texttt{efi.acpi} for ACPI 1.0 or \texttt{efi.acpi20} for ACPI 2.0.
+		
+		If the system is booted via legacy BIOS the process is more complicated.
+		To find the RSDP its signature \texttt{RSD PTR} needs to be located.
+		It can reside either inside the Extended BIOS Data Area (EBDA) or the BIOS read only memory.
+		The first one can be located by looking up a memory address that is stored at \texttt{0x40e}.
+		The second one is always at the range from \texttt{0xe0000} to \texttt{0xfffff} \citep{acpi_spec}.
+		
+		\begin{table}[]
+			\centering
+			\caption{ACPI RSDP table \citep{acpi_spec}}
+			\label{rsdp}
+			\begin{tabular}{r|c|c|l}
+				Field             & Length & Offset & Description                                                      \\ \hline
+				Signature         & 8      & 0      & "RSD PTR "                                                       \\ \hline
+				Checksum          & 1      & 8      & Checksum defined in ACPI 1.0 \\
+				&&& includes the first 20 bytes        \\ \hline
+				OEMID             & 6      & 9      & String that identifies the OEM \\ 
+				&&& (Original Equipment Manufacturer) \\ \hline
+				Revision          & 1      & 15     & Revision of the RSDP \\
+				&&& 0 for ACPI 1.0 and 2 for APCI 2.0          \\ \hline
+				RsdtAddress       & 4      & 16     & Physical address of the RSDT (32 bit)                            \\ \hline
+				Length            & 4      & 20     & Length of the table including the header                         \\ \hline
+				XsdtAddress       & 8      & 24     & Physical address of the XSDT (64 bit)                            \\ \hline
+				Extended Checksum & 1      & 32     & Checksum of the entire table \\
+				&&& including both checksum fields     \\ \hline
+				Reserved          & 3      & 33     & Reserved field                                                  
+			\end{tabular}
+		\end{table}
+	
+		When the signature has been located the RSDP table is mapped to the subsequent memory.
+		Table \ref{rsdp} shows the structure of the RSDP.
+		Length and offset are measured in byte.
+		
+		To provide this information to Genode in form of a ROM dataspace the device file \texttt{/dev/platform\_info} is symlinked to the \texttt{/genode} directory of the \texttt{initramfs} as described in section \ref{init}.
+		Yet when Genode loads a ROM it checks its size first and if it is zero the dataspace is invalid and not used.
+		This is a problem since a special device file on Linux always has a size of zero.
+		
+		To mitigate this problem the size needs to be altered.
+		When \texttt{open} is called the implementation of the kernel module gets the \texttt{inode} structure passed as an argument.
+		Since the content of the platform info is already evaluated at this point the size is determined and the inodes size is altered accordingly.
+		To set the size correctly the \texttt{init} binary described in section \ref{init} opens and closes the file directly after loading the module.
 	
 	\chapter{Evaluation}
 	
