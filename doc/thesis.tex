@@ -715,6 +715,7 @@ DIV=11,
 		%TODO explain that this has been chosen and why
 		
 		\section{Interrupts}
+		\label{irq}
 		
 		Interrupts are asynchronous events sent by external devices.
 		Beside the so called interrupt number no further information is transmitted.
@@ -1367,6 +1368,28 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		The usage of a symlinked device file and the manual manipulation of an inode by the module are merely a hack than a robust solution.
 	
 		\section{Future work}
+		
+		To be a usable solution for development and production the implementations in this concept need to reach a stable state.
+		The current workarounds, that create memory leaks, need to be replaced with proper fixes.
+		Also it needs to be tested further on real hardware and the issues that arose on the ThinkPad X260 require an investigation.
+		
+		To support the full range of drivers the \texttt{IRQ} session is required.
+		The concept of a blocking read has been described in section \ref{irq} and is already used in related work \citep{uio}.
+		Also the performance of this approach needs to be evaluated.
+		This is important since interrupts are often time critical and require a low latency.
+		
+		A further important point is the integration into Genodes build system.
+		While some of it has already been done it is still unfinished.
+		At the state in this thesis selecting between Genode on a bare Linux kernel and on the host system requires changes at multiple points.
+		These are for example the build configuration and the Linux specific implementation of core.
+		Reducing this to a switch in the build configuration is required use the results of this theses productively.
+		
+		The Linux kernel itself should be stripped down further.
+		First of all many drivers inside the kernel already collide with their user space counterparts such as both ACPI implementations.
+		Secondly the goal is to reduce the kernels complexity as far as possible.
+		To achieve this any functionality that is not required needs to be removed including usually always available interfaces such as \texttt{sysfs} \citep{sysfs} and \texttt{procfs} \citep{procfs}.
+		The Linux Kernel Tinification project \citep{tiny} done some work in that direction.
+		Even though their goal it to create small kernel binaries for embedded platforms and not the reduction of complexity this work is a starting point for a further microkernelization of the Linux kernel.
 	
 	\bibliographystyle{unsrtnat}
 	\bibliography{sources}
