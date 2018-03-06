@@ -401,6 +401,8 @@ DIV=11,
 	
 	\chapter{Design and Implementation}
 	
+		
+	
 		Modern System access their hardware through different channels.
 		Which one and how these are used depends on the type of hardware and on the requirements to the system.
 		These are often a high bandwidth to transmit data or a low latency to react on input.
@@ -421,6 +423,8 @@ DIV=11,
 		Furthermore general conditions such as the kernels complexity and the integration of these concepts into Genode are discussed.
 		
 		\section{Requirements}
+		
+		
 		
 		% no kernel modifications 
 		% TODO
@@ -593,15 +597,6 @@ DIV=11,
 		An example are \texttt{unsigned char inb(unsigned short int port)} and \texttt{void outb(unsigned char value, unsigned short int port)} which are used to respectively read and write a single byte to a specific port address.
 		To use these functions the permissions need to be granted first.
 		This can be done either by \texttt{int iopl(int level)} or \texttt{int ioperm(unsigned long from, unsigned long num, int turn\_on)} which are explained subsequently. \citep{outb} \citep{ioperm} \citep{iopl}
-				
-		\subsection{iopl}
-		
-		The first option, \texttt{iopl} grants the calling process a specific privilege level.
-		On Linux these levels range from zero to three where zero is the level of a normal process and 3 is the highest one.
-		These privileges are also inherited by child processes created by \texttt{fork} or \texttt{execve}. \citep{iopl}
-		
-		On Genode core would call \texttt{iopl} once it starts and creates the \texttt{IO\_Port} session.
-		A component would access these ports through the session interface which also regulates the port ranges.
 		
 		\subsection{ioperm}
 		
@@ -612,6 +607,18 @@ DIV=11,
 		
 		The approach on Genode is to call this syscall when a client connects to the \texttt{IO\_Port} session with the required port ranges.
 		This would not collide with the checks implemented in Genode but would provide the enforcement of these constraints on kernel level.
+				
+		\subsection{iopl}
+		
+		The first option, \texttt{iopl} grants the calling process a specific privilege level.
+		On Linux these levels range from zero to three where zero is the level of a normal process and 3 is the highest one.
+		These privileges are also inherited by child processes created by \texttt{fork} or \texttt{execve}. \citep{iopl}
+		
+		On Genode core would call \texttt{iopl} once it starts and creates the \texttt{IO\_Port} session.
+		A component would access these ports through the session interface which also regulates the port ranges.
+		The instantiation of a \texttt{IO\_PORT} session is the first point where the required port range is known.
+		Since this does not run in the same process that executes the actual I/O accesses acquiring the needed privilege level at this point would be without effect.
+		As the privilege needs to be acquired before the needed range is known \texttt{iopl} is the only feasible option.
 		
 		\section{Memory mapped IO}
 		
@@ -712,6 +719,16 @@ DIV=11,
 		This and the control over the devices implementation allow a constraint to the memory that can be mapped while on the other hand having no dependencies beside \texttt{/dev}.
 		It also can be built as a kernel module which makes it loadable at run time. \citep{ioctl}
 		
+		This is the preferred solution since it eliminates the most of other solutions drawbacks.
+		It does only depend on \texttt{/dev} and with \texttt{devtmpfs} there is a low complexity driver available to populate it \citep{devtmpfs}.
+		The alternative option would be udev that is a user space daemon which dynamically adds and removes devices in \texttt{/dev} accordingly to the drivers that are loaded and the devices that are available \citep{udev}.
+		To be used in this scenario it needs to be fully included.
+		This would result in a large increase of complexity and unneeded functionality.
+		Also any other interfaces such as \texttt{procfs} \citep{procfs}, \texttt{sysfs} \citep{sysfs} shall be stripped from the kernel later to further reduce its complexity.
+		
+		Furthermore this approach is still flexible enough to implement the required restrictions discussed earlier in this section.
+		It also can be built as a kernel module or inside the kernel source tree.
+		This makes applicable to both kernels that cannot be changed on the device and kernels that do not have support for loadable modules.
 		%TODO explain that this has been chosen and why
 		
 		\section{Interrupts}
@@ -796,6 +813,11 @@ DIV=11,
 		Since it requires modifications of the original base-linux core the current functionality needs to be maintained.
 		This can be done either by creating a hybrid core that is able to run like the current one and on a bare Linux kernel or a switch needs to be added that chooses the target on build time.
 		Additionally this code needs to be brought upstream as it cannot be plugged into the source tree like a separate base directory.
+		
+		While this approach comes with the down side of additional configuration effort to keep backward compatibility it is still the preferred solution.
+		A lot of the existing code can be reused or extended easily.
+		It also reduces the integration effort since it is already fully supported by the build system.
+		Otherwise a complete new kernel needs to be added to it including dependency selection and image creation.
 		
 		%TODO explain that this has been chosen and why
 	
