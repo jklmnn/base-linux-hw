@@ -58,25 +58,26 @@ DIV=11,
 		UIO for example requires a loadable kernel module for each driver which still adds complexity to the kernel instead of taking it away.
 		FUSE only implements file system drivers and does not have access to any hardware resources.
 		
-		A solution to this problem are micro kernels.
+		A solution to this problem are microkernels.
 		They implement only the minimally required functionality inside the kernel which reduces their complexity.
 		This includes the management of memory and hardware access.
 		They do not implement drivers which are responsible for a high amount of the complexity and errors in monolithic systems. \citep{Chou:SOSP:01}
 		
-		Based on micro kernels drivers are implemented in the user space.
+		Based on microkernels drivers are implemented in the user space.
 		This lowers their privileges and isolates them from each other.
 		The Genode OS Framework is an implementation of this concept. 
-		It is a component based system that runs on different micro kernels such as NOVA or seL4.
+		It is a component based system that runs on different microkernels such as NOVA or seL4.
 		It realizes a strict separation of its components and only allows a defined communication between them.
 		
-		On the other hand micro kernels often do not support less used or exotic platforms.
+		Micro kernels often do not support less used or exotic platforms.
 		Porting them to a new unsupported platform requires a high effort and needs time.
 		Linux however often supports them well and is the only choice for some of them.
 		It also comes with good debugging facilities which is an important part for driver development.
 		
 		The goal of this thesis is the combination of the advantages of both Linux and Genode.
 		While it already runs on Linux there is no support for hardware access and device drivers yet.
-		Even though Linux is highly complex stripping away its kernel drivers and run them through Genode in the user space increases security while still keeping the good platform support.
+		After stripping away its kernel drivers Linux still has a high complexity.
+		Despite this running them in the user space on Genode gains security through isolation while keeping the good platform support.
 		
 	\chapter{Background}
 
@@ -122,13 +123,13 @@ DIV=11,
 		
 		\begin{figure}
 			\centering
-			\def\svgwidth{\textwidth}
+			\def\svgwidth{0.8\textwidth}
 			\input{monolithic.pdf_tex}
 			\caption{Monolithic kernel system architecture}
 			\label{monolithickernel}    
 		\end{figure}
 		
-		\section{Micro kernels}
+		\section{Microkernels}
 		
 		Micro kernels aim to implement as few functionality as possible inside the kernel.
 		Their task is to isolate user space components from each other.
@@ -138,24 +139,23 @@ DIV=11,
 		Micro kernels are used on embedded chips.
 		Apples A-Series processors contain a coprocessor called Secure Enclave.
 		It is responsible for cryptographic operations and key management and has to maintain the protection of the keys even if the system running on the application processor is compromised.
-		It uses a customized version of the L4 micro kernel \citep{ios11sec} \citep{Heiser:2016:LML:2912578.2893177}.
+		It uses a customized version of the L4 microkernel \citep{ios11sec} \citep{Heiser:2016:LML:2912578.2893177}.
 		
 		Although virtualisation is often associated with large scaled servers it is also used on embedded devices.
 		In this context micro hypervisors such as NOVA \citep{Steinberg:2010:NMS:1755913.1755935} are used.
-		These are specialized micro kernels that make use of the virtualisation technologies available on many platforms to run multiple systems isolated from each other. \citep{ibmvirt}
+		These are specialized microkernels that make use of the virtualisation technologies available on many platforms to run multiple systems isolated from each other. \citep{ibmvirt}
 		
-		As a general requirement a micro kernel should only functionality that would be infeasible to implement outside the kernel.
+		As a general requirement a microkernel should only functionality that would be infeasible to implement outside the kernel.
 		It also has to separate and protect applications from itself and each other.
-		Any component that runs on a micro kernel must not be influenced by any other. And if two components communicate between each other the communication must be secure in regards of confidentiality and integrity.
+		Any component that runs on a microkernel must not be influenced by any other. And if two components communicate between each other the communication must be secure in regards of confidentiality and integrity.
 		
-		To fulfil these requirements a micro kernel based system consists of tasks that run in the user space.
+		To fulfil these requirements a microkernel based system consists of tasks that run in the user space.
 		As shown in figure \ref{microkernel} they are isolated from each other but can communicate via IPC with each other and the kernel.
 		Each task owns an address space which only itself can access.
 		Since they cannot influence each other the goal of isolation is satisfied.
-		Any communication between them is done via IPC.
+		Any communication between them is done via IPC or well defined shared memory regions.
 		
-		A task is the representation of a thread or process.
-		It is characterized through its own state including its address space, stack pointer and instruction pointer.
+		A task is a process that is characterized through its own state including its address space, stack pointer and instruction pointer.
 		Any changes the thread applies to its address space are controlled by the kernel.
 		Yet it is able to create a child that can inherit parts of its resources.
 		The parent looses access to anything it grants to the child regains it once the it is terminated.
@@ -167,18 +167,18 @@ DIV=11,
 		Figure \ref{mapping} shows that each task only can see its virtual addresses and does know neither which physical memory it possesses nor where other tasks are located.
 		The assignment and management of these mappings is done by the kernel.
 		
-		If a task spawns a child it passes a part of its own to the child.
+		If a task spawns a child it passes a part of its own resources to the child.
 		It also looses access to this memory.
 		In figure \ref{mapping} the first task spawns a child which gets the parents second half of the memory.
 		The child itself cannot conclude from this to the physical or its parents memory location and size.
-		If the parent wants to keep this space, for example to employ shared memory, it can map the space to the other subsystem.
+		If the parent wants to keep the space it has passed to its child, for example to employ shared memory, it can map it to the child.
 		To reverse the mapping the according address space can be flushed removing it from all other subsystems except the flushing one.
-		The managing of these operations is done in the kernel itself.
+		The management of the resources that are affected by these operations is done in the kernel itself.
 		While I/O memory is a does not necessarily represent physical main memory it is also managed in this context.
 		
 		\begin{figure}
 			\centering
-			\def\svgwidth{\textwidth}
+			\def\svgwidth{0.8\textwidth}
 			\input{mapping.pdf_tex}
 			\caption{Mapping physical to virtual memory}
 			\label{mapping}    
@@ -192,15 +192,16 @@ DIV=11,
 		It does not send data to other threads but migrates the sending one to another address space.
 		Both of these communication concepts need to be supervised by the kernel.
 		
-		On modern hardware interrupts are an often used way of devices to notify the software of events.
-		This mechanism also needs to be supported on micro kernels.
-		Interrupts are incorporated by empty IPC messages.
-		They are sent from threads that have special ids which map to hardware interrupt ids.
-		The receiving thread can conclude to the triggered interrupt by the source id. \citep{Liedtke_1995}
+		Interrupts are an often used way of devices to notify the software of events.
+		This mechanism also needs to be supported on microkernels.
+		Interrupts can be implemented by empty IPC messages which are sent from threads that have special ids.
+		These map to hardware interrupt ids.
+		The receiving thread can conclude to the triggered interrupt by the source id \citep{Liedtke_1995}.
+		On more recent system such as NOVA interrupts can be implements as semaphores for example \citep{Steinberg:2010:NMS:1755913.1755935}.
 		
 		\begin{figure}
 			\centering
-			\def\svgwidth{\textwidth}
+			\def\svgwidth{0.8\textwidth}
 			\input{micro.pdf_tex}
 			\caption{Micro kernel system architecture}
 			\label{microkernel}    
@@ -208,12 +209,12 @@ DIV=11,
 		
 		\section{Genode}
 		
-		Genode aims to solve this problem through multiple ways.
-		Instead of a monolithic kernel it uses microkernels.
-		They provide a greater flexibility than separation kernels why keeping the size of the trusted computing base at a manageable level.
-		This is accomplished for example by running device drivers as separate user space processes.
-		User space applications in Genode are also managed by capabilities.
-		They provide a way to allow and deny access to a certain number of system resources without the need for a global complex policy.
+		The Genode OS framework is the implementation of this architecture for highly secure special purpose operating systems.
+		Mainly written in C++ it scales from embedded systems with only a few megabytes of memory to big systems with dynamic workloads.
+		It implements all applications and drivers as user space components and provides isolation between them.
+		
+		User space applications in Genode are managed by capabilities.
+		They provide a way to allow and deny access to system resources such as RAM or I/O memory without the need for a global complex policy.
 		Additionally to capabilities resources can be managed in a hierarchical way.
 		Software components can be be partitioned into parts of different complexity.
 		This helps to exclude complex parts from the trusted computing base and therefore reduce the amount of code that needs to be verified.
@@ -227,8 +228,6 @@ DIV=11,
 			\label{fig:tcb_tree}
 		\end{figure}
 		
-		The Genode OS framework is the implementation of this architecture for highly secure special purpose operating systems.
-		Mainly written in C++ it scales from embedded systems with only a few megabytes of memory to big systems with dynamic workloads.
 		The architecture consists of a recursive sandbox structure.
 		Those are controlled from their parents and separated from their siblings.
 		But they can create additional sandboxes and subtrees of children.
@@ -278,9 +277,10 @@ DIV=11,
 		\subsection{Sessions}
 		\label{sessions}
 		
-		Sessions are the IPC implementation in Genode.
-		They provide a way to communicate between components but also an abstraction for platform dependent concepts.
-		They are divided into two groups of them, one for the core tasks and one for the operating system level.
+		Sessions in Genode provide a way to communicate between components but also an abstraction for platform dependent concepts.
+		Their semantics are similar to remote procedure calls but with additional type information.
+		To do an RPC call to a specific session a capability of the same type as the session has to be owned by the caller.
+		They are divided into two groups, one for the core tasks and one for the operating system level.
 		
 		The core session include basic resources such as protection domains, RAM and CPU.
 		More important for this thesis they also provide hardware access abstractions for I/O memory, I/O ports and interrupts.
@@ -292,6 +292,28 @@ DIV=11,
 		
 		The operating system level sessions are mostly platform independent and only rely on the abstractions made by the core component.
 		They provide functionality such as framebuffers, network interface cards, timers or file systems. \citep{genode}
+		
+		\subsection{Components}
+		
+		Genode based systems are compounded on components.
+		These can be drivers, services, applications.
+		Their outer interface is defined by the sessions they require and provide.
+		Beside these sessions they are isolated from each other.
+		Components do not have any information about their communication partners but only about the type of the sessions they use.
+		Due to this property the can be replaced transparently by other components providing or using the same sessions. \citep{genode}
+		
+		A graphical application for example requires a framebuffer session to draw its user interface.
+		The framebuffer session itself can be provided by a display driver.
+		The only information the application has are width height and color mode of the framebuffer.
+		Yet it cannot conclude what is providing it.
+		If the system is moved to another hardware that requires a different display driver.
+		The display driver component can be replaced with another one without affecting the application using the framebuffer session. \citep{genode}
+		
+		A special case is the core component.
+		It is the parent of all other components and provides the initially required sessions.
+		These include basic resources like CPU and protection domain  (PD).
+		It is also the only component that has no parent itself. \citep{genode}
+		
 	
 	\chapter{Related work}
 		
@@ -327,7 +349,7 @@ DIV=11,
 		While they provide an interface for rump based drivers they also preserve their monolithic properties and driver stacks. \citep{kantee}
 		
 		Drivers on top of a rump kernel only need to interface with it and not the underlying kernel.
-		That makes this concept portable to highly different platforms such as monolithic or micro kernels.
+		That makes this concept portable to highly different platforms such as monolithic or microkernels.
 		This is achieved by stripping away all unneeded components of a kernel and only leaving those required for drivers to work.
 		At the lower part of the kernel exists a small and well defined portability layer to interface with the underlying environment.
 		These concepts were implemented first by the NetBSD project. \citep{bsd_rump}\citep{fosdem_rump}\citep{rump}
@@ -863,7 +885,7 @@ KERNEL_RUN_OPT(linux) := --include power_on/linux --include log/linux
 KERNEL_RUN_OPT(linux) := --include power_on/qemu  --include log/qemu --include image/uefi
 		\end{lstlisting}
 		
-		To run Linux on Qemu the same options as for micro kernel were used.
+		To run Linux on Qemu the same options as for microkernel were used.
 		As shown in listing \ref{kernellinux2} they include starting Qemu and specify an image type to be used.
 		There are two types available, \texttt{image/iso} which creates a .iso file that is bootable with a legacy BIOS and \texttt{image/uefi} for systems that only support (U)EFI bootable images.
 		
@@ -877,7 +899,7 @@ KERNEL_RUN_OPT(linux) := --include power_on/qemu  --include log/qemu --include i
 		% grub 2
 		
 		The first stage of the boot process is Grub2 which loads the actual kernel.
-		While the micro kernels used in Genode use the Multiboot2 standard Linux requires its own handling.
+		While the microkernels used in Genode use the Multiboot2 standard Linux requires its own handling.
 		It consists of setting the kernel and the so called initial RAM disk, or \texttt{initrd}.
 		This process is available in grub via a module called \texttt{linux} that needs to be loaded first.
 		A simple configuration to boot Linux is shown in listing \ref{grubcfg}.
@@ -1169,7 +1191,7 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 </platform_info>
 		\end{lstlisting}
 		
-		On micro kernel based scenarios this information is collected and provided by the kernel.
+		On microkernel based scenarios this information is collected and provided by the kernel.
 		Applied on Linux this requires a further kernel module.
 		It is implemented as a special character device similarly to the \texttt{hwio} module described in section \ref{hwiodev}.
 		Since ROM dataspaces are accessed by mapping their contents it also implements \texttt{mmap}.
