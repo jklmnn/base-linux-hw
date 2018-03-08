@@ -17,6 +17,8 @@ DIV=11,
 \input{genode-manual/manual/img/tikz-preamble.tex}
 \input{genode-manual/manual/img/tikz-common.tex}
 
+\renewcommand{\labelenumi}{R\arabic{enumi}}
+
 \begin{document}
 	
 	\tableofcontents
@@ -448,159 +450,52 @@ DIV=11,
 		
 		\section{Requirements}
 		
-		% no kernel modifications 
-		% TODO
+		% run genode as userland
+		% privilege escalation
+		% keep isolation intact
+		% run unmodified drivers
+		% kernel enablement (module/in tree)
+		% user space interrupt handler
+		% no interrupt polling
+		% keep dependencies low
+		% strip down kernel
+		% no driver collisions
+		% no additional code per driver
+		% integration into genode
+		% no collision with exiting kernel repos
+		% noo duplicate code
 		
-		To benefit from user space drivers certain requirements need to be fulfilled.
-		The driver must run completely inside the user space without any exceptions.
-		At the point where it needs to run its own code inside the kernel any security advantage is gone since an attacker could escalade its privileges.
+		\subsection{Functional}
 		
-		A second requirement are kernel interfaces that allow drivers to work completely without any further modifications to the kernel.
-		This is founded on two reasons.
-		First it improves operability as drivers can be loaded or patched without any influence on the kernel itself.
-		Second, and more importantly, they cannot introduce further errors to the kernel.
-		Any modification, even if it is only a small one done to interface with a driver can cause bugs that could compromise the security of the entire system.
-		To prevent this the kernel needs to stay untouched.
+		\begin{enumerate}
+			\item Boot Genode on a bare  Linux kernel without any further userland. \label{req:boot}
+			No further user processes such as bash should run beside Genode.
+			\item Already available drivers on Genode should be usable without any modifications.
+			Furthermore the interface should support all drivers without the need to be modified itself, too.
+			\item Developed kernel modules should be able to be built directly in the kernel source and as a loadable module.
+			This is required to support kernels without module support while also being able to debug the module more easily.
+		\end{enumerate}
 		
-		If an existing kernel, such as Linux, is used to fulfil these needs a suitable interface needs to be added which is then used by the drivers.
-		This interface of course is itself a modification to the kernel and needs to be treated as security relevant code.
-		Yet it is still much smaller than the drivers it is meant to move to the user space.
-		%%%
+		\subsection{Non-functional}
 		
-		The general low level resources that are used to communicate with hardware are I/O ports, I/O memory and interrupts.
-		While the first one is x86 specific the others can be found on many different architectures.
+		\begin{enumerate}
+			\item Keep the Linux kernel complexity as low as possible.
+			This includes dependencies introduces by functional requirements.
+			\item Remove drivers from the Linux kernel that collide with drivers available in Genode.
+			If two device drivers running simultaneously access the same hardware the behaviour cannot be defined any more.
+			\item Integrate the implementation into Genode in a way to keep the current and the additional functionality in parallel.
+			Also current code should not be duplicated as this would increase maintenance effort highly.
+		\end{enumerate}
 		
-		As discussed in section \ref{sessions} Genode provides so called sessions as resource and communication interface.
-		According to the required resources the sessions \texttt{IO\_PORT}, \texttt{IO\_PORT} and \texttt{IRQ} are provided.
+		\subsection{Security}
 		
-		Since it is difficult to implement them all correctly without and testing in between it makes sense to pick, implement and test them one by one.
-		Testing them requires not only hardware but also drivers that access it.
-		To test a single resource an according driver that only depends on this one is required.
-		This leads to the next step to analyse the resources a driver needs to function and to categorize these.
-		
-		In Genode sessions and therefore resources are managed by routes.
-		These can be set either implicitly or explicitly.
-		The former is used in nearly every configuration that was already available.
-		This was often done by setting a generic default route in the parent that would allow any interaction and was inherited by its children.
-		Exceptions from this were only settings that otherwise would have been ambiguous.
-		
-		Listing \ref{implicitroutes} shows the default configuration of the \texttt{rtc\_drv} test which tests the real time clock driver.
-		As described above it only specifies a default route which is valid for all children of the parent.
-		This route, in line 14 to 16 specifies that any service can use the parent or any child to fulfil its needs.
-		This does not help much as all actual required resources are invisible.
-		And even if they could be seen somehow this would reflect the maximally used and not the minimally required resources.
-		
-		\lstset{language=XMl,
-			caption={Implicit default routes},
-			label=implicitroutes,
-			breaklines=true,
-			numbers=left,
-			numberstyle=\footnotesize,
-			stepnumber=1,
-			keywordstyle=\color[rgb]{0,0,0},
-			commentstyle=\color[rgb]{0.133,0.545,0.133},
-			stringstyle=\color[rgb]{0.627,0.126,0.941}}
-		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-<config prio_levels="2" verbose="yes">
-		
-	<parent-provides>
-		<service name="ROM"/>
-		<service name="IRQ"/>
-		<service name="IO_MEM"/>
-		<service name="IO_PORT"/>
-		<service name="PD"/>
-		<service name="RM"/>
-		<service name="CPU"/>
-		<service name="LOG"/>
-	</parent-provides>
-		
-	<default-route>
-		<any-service> <parent/> <any-child/> </any-service>
-	</default-route>
-	<default caps="100"/>
-		
-	<start name="timer">
-		<resource name="RAM" quantum="1M"/>
-		<provides> <service name="Timer"/> </provides>
-	</start>
-		
-	<start name="rtc_drv" priority="-1">
-		<resource name="RAM" quantum="1M"/>
-		<provides><service name="Rtc"/></provides>
-	</start>
-		
-	<start name="rtc_drv" priority="-1">
-		<resource name="RAM" quantum="1M"/>
-		<provides><service name="Rtc"/></provides>
-	</start>
-		
-	<start name="test-rtc" priority="-1">
-		<resource name="RAM" quantum="1M"/>
-	</start>
-</config>
-		\end{lstlisting}
-		
-		The solution is to remove the default route.
-		This obviously leads to the whole system breaking since no resources are available to anyone.
-		The minimal requirement can be achieved by manually adding routes one by one until the desired functionality is available.
-		
-		The result is listing \ref{explicitroutes} which is already much more verbose.
-		It is also stripped down a bit and only shows the parent and one driver.
-		The default route of the parent is empty now but the \texttt{rtc\_drv} now has its own section for routes.
-		It requires the \texttt{PD} (Protection Domain), \texttt{CPU}, \texttt{LOG} and \texttt{ROM} sessions which are all provided by the parent.
-		Those are required by any component running on Genode, no matter if it is a device driver or not.
-		
-		The more interesting part is the \texttt{IO\_PORT} session route which also points to the parent.
-		Since this is the only one other session its also the only other requirement as this component has no access to anything else.
-		The essence of this example is that the implementation of the \texttt{IO\_PORT} session on a new platform can be tested with this driver.
-
-		\lstset{language=XMl,
-			caption={Explicit routes},
-			label=explicitroutes,
-			breaklines=true,
-			numbers=left,
-			numberstyle=\footnotesize,
-			stepnumber=1,
-			keywordstyle=\color[rgb]{0,0,0},
-			commentstyle=\color[rgb]{0.133,0.545,0.133},
-			stringstyle=\color[rgb]{0.627,0.126,0.941}}
-		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-<config>
-	<parent-provides>
-		<service name="ROM"/>
-		<service name="IRQ"/>
-		<service name="IO\_MEM"/>
-		<service name="IO\_PORT"/>
-		<service name="PD"/>
-		<service name="RM"/>
-		<service name="CPU"/>
-		<service name="LOG"/>
-	</parent-provides>
-	<default-route>
-	</default-route>
-	<default caps="100"/>
-		
-	<start name="rtc\_drv">
-		<resource name="RAM" quantum="1M"/>
-		<provides>
-			<service name="Rtc"/>
-		</provides>
-		<route>
-			<service name="PD"><parent/></service>
-			<service name="CPU"><parent/></service>
-			<service name="LOG"><parent/></service>
-			<service name="ROM"><parent/></service>
-			<service name="IO\_PORT"><parent/></service>
-		</route>
-	</start>
-</config>
-		\end{lstlisting}
-		
-		For the other sessions this needs to be done analogously.
-		While the example was straight forward this does not necessarily count for the others.
-		The \texttt{IO\_MEM} session also can be tested solely with a single driver, the \texttt{fb\_boot\_drv} in this case.
-		But the \texttt{IRQ} is only used in combination with other sessions.
-		This results in the order the implementations need to be done with interrupts being the last.
+		\begin{enumerate}
+			\item Keep Genodes component isolation intact.
+			Processes should not be able to influence each other and communicate only in ways provided by Genode.
+			\item Configurable objects such as file descriptors that are created in core and passed to other components should have a trapping configuration.
+			This means that they cannot be altered any more after being configured the first time.
+			
+		\end{enumerate}
 		
 		\section{IO Ports}
 		
@@ -803,22 +698,22 @@ DIV=11,
 		This solution implements interrupts on Linux without polling and therefore should gain a feasible latency.
 		It also keeps the correct semantics of the implementation in Genode and should not require any workarounds.
 		
-		\section{Complexity}
-		
-		%TODO put this in a better place / rework
-		With security assumptions in mind enabling resource access for the user space is not the only requirement.
-		The Linux kernel is a complex construct with millions of lines of code.
-		To reduce this complexity as much unnecessary functionality as possible needs to be removed.
-		Beside the removal of drivers that are provided by the user space system such as USB and graphics support also other subsystems that usually are not directly visible to the common user need to be taken care of.
-		
-		This is especially important for parts that could be used to implement other requirements.
-		So it needs to be taken care of that nothing depends on those.
-		These systems include \texttt{procfs} and \texttt{sysfs} which many user space interfacing drivers depend on. \citep{sysfs} \citep{procfs}
-		
-		Also some drivers are required to be removed not only because of complexity but their interference with drivers that should run in the user space.
-		While the kernel might even allow multiple entities to access the same range of memory or IO ports this will likely cause errors.
-		Since these mechanisms access hardware resources they are highly volatile which also means that changes made by one driver are visible in another accessing the same device.
-		To prevent this any resource that is used by a user space driver must not be used by the kernel.
+%		\section{Complexity}
+%		
+%		%TODO put this in a better place / rework
+%		With security assumptions in mind enabling resource access for the user space is not the only requirement.
+%		The Linux kernel is a complex construct with millions of lines of code.
+%		To reduce this complexity as much unnecessary functionality as possible needs to be removed.
+%		Beside the removal of drivers that are provided by the user space system such as USB and graphics support also other subsystems that usually are not directly visible to the common user need to be taken care of.
+%		
+%		This is especially important for parts that could be used to implement other requirements.
+%		So it needs to be taken care of that nothing depends on those.
+%		These systems include \texttt{procfs} and \texttt{sysfs} which many user space interfacing drivers depend on. \citep{sysfs} \citep{procfs}
+%		
+%		Also some drivers are required to be removed not only because of complexity but their interference with drivers that should run in the user space.
+%		While the kernel might even allow multiple entities to access the same range of memory or IO ports this will likely cause errors.
+%		Since these mechanisms access hardware resources they are highly volatile which also means that changes made by one driver are visible in another accessing the same device.
+%		To prevent this any resource that is used by a user space driver must not be used by the kernel.
 		
 		\section{Integration into Genode}
 		
@@ -1352,9 +1247,143 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		While it is not hardware dependent it relies on the underlying kernel.
 		Even though it was already available on Linux it is needed to enable this platform and is listed here for completeness.
 		
+		%%% requirement analysis
+		
+		Since testing all resources at once is not feasible and would yield imprecise results they need to be tested one by one.
+		To do this their resource dependencies needed to be analysed first.
 		The requirement analysis of was done by creating scenarios with explicit routes only.
 		The configurations were reduced to the point that taking away any of these resources would make the driver fail.
-		The results are visualized in table \ref{drivers}.
+		
+		As discussed in section \ref{sessions} Genode provides so called sessions as resource and communication interface.
+		According to the required resources the sessions \texttt{IO\_PORT}, \texttt{IO\_PORT} and \texttt{IRQ} are provided.
+		Testing them requires not only hardware but also drivers that access it.
+		To test a single resource an according driver that only depends on this one is required.
+		This leads to the next step to analyse the resources a driver needs to function and to categorize these.
+		
+		In Genode sessions and therefore resources are managed by routes.
+		These can be set either implicitly or explicitly.
+		The former is used in nearly every configuration that is already available.
+		This is often done by setting a generic default route in the parent that would allow any interaction and was inherited by its children.
+		Exceptions from this were only settings that otherwise would have been ambiguous.
+		
+		Listing \ref{implicitroutes} shows the default configuration of the \texttt{rtc\_drv} test which tests the real time clock driver.
+		As described above it only specifies a default route which is valid for all children of the parent.
+		This route, in line 14 to 16 specifies that any service can use the parent or any child to fulfil its requirements.
+		This does not help much as all actual required resources are invisible.
+		And even if they could be seen somehow this not reflect the minimally required resources.
+		Instead it would show the resources the driver uses in the best case which is not the goal.
+		
+		\lstset{language=XMl,
+			caption={Implicit default routes},
+			label=implicitroutes,
+			breaklines=true,
+			numbers=left,
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+		<config prio_levels="2" verbose="yes">
+		
+		<parent-provides>
+		<service name="ROM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		</parent-provides>
+		
+		<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+		</default-route>
+		<default caps="100"/>
+		
+		<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides> <service name="Timer"/> </provides>
+		</start>
+		
+		<start name="rtc_drv" priority="-1">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Rtc"/></provides>
+		</start>
+		
+		<start name="rtc_drv" priority="-1">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Rtc"/></provides>
+		</start>
+		
+		<start name="test-rtc" priority="-1">
+		<resource name="RAM" quantum="1M"/>
+		</start>
+		</config>
+		\end{lstlisting}
+		
+		The solution is to remove the default route.
+		This obviously leads to the whole system breaking since no resources are available to anyone.
+		The minimal requirement can be achieved by manually adding routes one by one until the desired functionality is available.
+		
+		The result is listing \ref{explicitroutes} which is already much more verbose.
+		It is also stripped down a bit and only shows the parent and one driver.
+		The default route of the parent is empty now but the \texttt{rtc\_drv} now has its own section for routes.
+		It requires the \texttt{PD} (Protection Domain), \texttt{CPU}, \texttt{LOG} and \texttt{ROM} sessions which are all provided by the parent.
+		Those are required by any component running on Genode, no matter if it is a device driver or not.
+		
+		The more interesting part is the \texttt{IO\_PORT} session route which also points to the parent.
+		Since this is the only one other session its also the only other requirement as this component has no access to anything else.
+		The essence of this example is that the implementation of the \texttt{IO\_PORT} session on a new platform can be tested with this driver.
+		
+		\lstset{language=XMl,
+			caption={Explicit routes},
+			label=explicitroutes,
+			breaklines=true,
+			numbers=left,
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+		<config>
+		<parent-provides>
+		<service name="ROM"/>
+		<service name="IRQ"/>
+		<service name="IO\_MEM"/>
+		<service name="IO\_PORT"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		</parent-provides>
+		<default-route>
+		</default-route>
+		<default caps="100"/>
+		
+		<start name="rtc\_drv">
+		<resource name="RAM" quantum="1M"/>
+		<provides>
+		<service name="Rtc"/>
+		</provides>
+		<route>
+		<service name="PD"><parent/></service>
+		<service name="CPU"><parent/></service>
+		<service name="LOG"><parent/></service>
+		<service name="ROM"><parent/></service>
+		<service name="IO\_PORT"><parent/></service>
+		</route>
+		</start>
+		</config>
+		\end{lstlisting}
+		
+		For the other sessions this needs to be done analogously.
+		While the example was straight forward this does not necessarily count for the others.
+		The \texttt{IO\_MEM} session also can be tested solely with a single driver, the \texttt{fb\_boot\_drv} in this case. But the IRQ is only used in combination with other sessions. 
+		
+		%%%
 	
 		\begin{table}[]
 			\centering
@@ -1383,7 +1412,8 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 			\label{drivers}
 		\end{table}
 
-			
+		This configuration has been created for each driver tested.
+		The results are visualized in table \ref{drivers}.
 		A note here is that all drivers using the platform driver also require the \texttt{IO\_PORT} session.
 		This has two reasons.
 		First of all the platform driver itself requires I/O ports so this dependency is basically inherited from anything depending on it.
