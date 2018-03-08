@@ -495,15 +495,19 @@ DIV=11,
 			label=implicitroutes,
 			breaklines=true,
 			numbers=left,
-			stepnumber=1}
-		\begin{lstlisting}
-<config prio\_levels="2" verbose="yes">
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+<config prio_levels="2" verbose="yes">
 		
 	<parent-provides>
 		<service name="ROM"/>
 		<service name="IRQ"/>
-		<service name="IO\_MEM"/>
-		<service name="IO\_PORT"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
 		<service name="PD"/>
 		<service name="RM"/>
 		<service name="CPU"/>
@@ -520,12 +524,12 @@ DIV=11,
 		<provides> <service name="Timer"/> </provides>
 	</start>
 		
-	<start name="rtc\_drv" priority="-1">
+	<start name="rtc_drv" priority="-1">
 		<resource name="RAM" quantum="1M"/>
 		<provides><service name="Rtc"/></provides>
 	</start>
 		
-	<start name="rtc\_drv" priority="-1">
+	<start name="rtc_drv" priority="-1">
 		<resource name="RAM" quantum="1M"/>
 		<provides><service name="Rtc"/></provides>
 	</start>
@@ -555,8 +559,12 @@ DIV=11,
 			label=explicitroutes,
 			breaklines=true,
 			numbers=left,
-			stepnumber=1}
-		\begin{lstlisting}
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
 <config>
 	<parent-provides>
 		<service name="ROM"/>
@@ -873,7 +881,7 @@ DIV=11,
 			caption={Default Linux settings},
 			label=kernellinux,
 			breaklines=true}
-		\begin{lstlisting}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
 KERNEL_RUN_OPT(linux) := --include power_on/linux --include log/linux
 		\end{lstlisting}
 		
@@ -882,7 +890,7 @@ KERNEL_RUN_OPT(linux) := --include power_on/linux --include log/linux
 			caption={Qemu Linux settings},
 			label=kernellinux2,
 			breaklines=true}
-		\begin{lstlisting}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
 KERNEL_RUN_OPT(linux) := --include power_on/qemu  --include log/qemu --include image/uefi
 		\end{lstlisting}
 		
@@ -911,7 +919,7 @@ KERNEL_RUN_OPT(linux) := --include power_on/qemu  --include log/qemu --include i
 			caption={Grub2 configuration to boot Linux},
 			label=grubcfg,
 			breaklines=true}
-		\begin{lstlisting}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
 menuentry 'Genode on Linux' {
 	insmod linux
 	linux /vmlinuz
@@ -981,8 +989,12 @@ menuentry 'Genode on Linux' {
 			label=usehwio,
 			breaklines=true,
 			numbers=left,
-			stepnumber=1}
-		\begin{lstlisting}
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0.7},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
 #include <hwio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1092,8 +1104,12 @@ int main()
 			label=lxiopl,
 			breaklines=true,
 			numbers=left,
-			stepnumber=1}
-		\begin{lstlisting}
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0.7},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
 inline int lx_iopl(int level)
 {
 	return lx_syscall(SYS_iopl, level);
@@ -1141,8 +1157,12 @@ inline int lx_iopl(int level)
 			label=lxioctl,
 			breaklines=true,
 			numbers=left,
-			stepnumber=1}
-		\begin{lstlisting}
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0.7},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
 inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 {
 	struct {
@@ -1182,8 +1202,12 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 			label=platforminfo,
 			breaklines=true,
 			numbers=left,
-			stepnumber=1}
-		\begin{lstlisting}
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0.0},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
 <platform_info>
 	<acpi revision="2" rsdt="0x1fe93074" xsdt="0x1fe930e8"/>
 	<boot>
