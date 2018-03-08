@@ -1116,8 +1116,6 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		
 		\begin{table}[]
 			\centering
-			\caption{ACPI RSDP table \citep{acpi_spec}}
-			\label{rsdp}
 			\begin{tabular}{r|c|c|l}
 				Field             & Length & Offset & Description                                                      \\ \hline
 				Signature         & 8      & 0      & "RSD PTR "                                                       \\ \hline
@@ -1134,6 +1132,8 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 				&&& including both checksum fields     \\ \hline
 				Reserved          & 3      & 33     & Reserved field                                                  
 			\end{tabular}
+			\caption{ACPI RSDP table \citep{acpi_spec}}
+			\label{rsdp}
 		\end{table}
 	
 		When the signature has been located the RSDP table is mapped to the subsequent memory.
