@@ -186,11 +186,13 @@ DIV=11,
 		
 		Inter process communication (IPC) is a defined way for two threads to communicate with each other.
 		While both parties must agree to the transmission the sender controls the content while the receiver has to handle it.
-		This handling includes if the contents are used at all and how they are interpreted.
+		This handling includes how the content is interpreted and if it is used at all.
 		
-		Beside message based IPC remote procedure calls can be used for communication.
-		It does not send data to other threads but migrates the sending one to another address space.
-		Both of these communication concepts need to be supervised by the kernel.
+		Remote procedure calls (RPC) can call procedures in another task.
+		When such a call is done the arguments are sent to the executing task which then does its computation.
+		Once the result is available it is returned to the sender.
+		On the senders side the call blocks execution until the result is available.
+		The passing of arguments and result is usually done via IPC.
 		
 		Interrupts are an often used way of devices to notify the software of events.
 		This mechanism also needs to be supported on microkernels.
@@ -321,7 +323,7 @@ DIV=11,
 		
 		UIO addresses industrial systems that often require I/O cards which only need some mapped memory and interrupts.
 		These cards are available as device files on Linux which provide access to the address space of each device.
-		Contrary to FUSE UIO drivers require a small kernel module that deploys access to hardware resources.
+		UIO drivers require a small kernel module that deploys access to hardware resources.
 		But the driver logic can be implemented in user space.
 		This gives a number of advantages for both the programmer and the user.
 		Instead of kernel modules these drivers can use many tools and libraries that are not available in the kernel.
@@ -364,10 +366,14 @@ DIV=11,
 		With one exception the rump kernel does not have support to directly map physical memory.
 		These mappings are usually represented as files on the host system.
 		While these files could be used to map memory into the rump kernel they would also limit the platforms and environments where it can be hosted.
-		The only exception to this are vnodes which are inode representations in memory.
-		The approach of the rump kernel to solve this problem is to allocate a block of memory and copy the contents of the memory mapped by the host system back and forth.
-		This works only because the vnode pages can be accessed by a single consumer at a time.
-		Therefore this approach is inapplicable for memory mapped IO or volatile memory. \citep{kantee}
+		Due to these issues the kernel does not map physical memory into driver code \citep{kantee}.
+		
+		The only exception to this are vnodes which are inode representations that reside in memory instead on the disk.
+		Vnodes are not mapped directly into the kernel.
+		Instead a block of memory is allocated inside the rump kernel.
+		On the host system physical memory can be mapped.
+		The rump kernel copies vnode pages into the allocated region and back to the host system \citep{kantee}.
+		Yet this mechanism is not suitable to be used with I/O or volatile memory.
 		
 		Another important aspect of hardware drivers are interrupts.
 		Hardware interrupts usually preempt the CPU which is not supported by the rump kernel.
@@ -394,7 +400,7 @@ DIV=11,
 		
 		\begin{figure}
 			\centering
-			\def\svgwidth{\textwidth}
+			\def\svgwidth{0.8\textwidth}
 			\input{fuse.pdf_tex}
 			\caption{FUSE architecture \citep{202324}}
 			\label{fusearch}
@@ -421,32 +427,26 @@ DIV=11,
 		It defines requests of filesystem specific types for example \texttt{lookup}, \texttt{open} or \texttt{opendir} \citep{202324}.
 	
 	
-	\chapter{Design and Implementation}
+	\chapter{Design}
 	
-		
-	
-		Modern System access their hardware through different channels.
-		Which one and how these are used depends on the type of hardware and on the requirements to the system.
+		Hardware is accessed through different channels.
+		Which one and how these are used depends on the type of hardware and on the requirements by the system.
 		These are often a high bandwidth to transmit data or a low latency to react on input.
 		Depending on these demands different mechanisms are used.
 		
 		Peripheral devices are often connected via busses such as the PCI (Peripheral Component Interconnect).
-		Those devices can either be user hardware such as graphics card or controller that connect other bus systems or devices.
+		Those devices can either be user hardware such as graphics cards or controller that connect other bus systems or devices.
 		The SATA bus is such an example.
 		While hard drive disks are connected directly to it a controller is necessary that connects it to the PCI bus which again is connected to the CPU.
+		Even though the amount of different busses is large, access to them can be broken down to a few mechanisms.
+		Commands to the driver on the SATA bus are just an abstraction to what needs to be communicated with the SATA controller. \citep{iosystems}
 		
-		While the amount of different busses is large access to them can be broken down to a few mechanisms.
-		Higher level accessors that enable more distant devices such as the drive mentioned in the example can be broken down to these few.
-		Orders for the driver on the SATA bus are just an abstraction to what needs to be communicated with the SATA controller. \citep{iosystems}
-		
-		This chapter will evaluate how these resources are handled on Genode and what is needed to enable them on Linux.
+		This chapter will evaluate how these resources are handled in other base platforms supported by Genode and what is needed to enable them on Linux.
 		To do this the required resources need to be identified first which is done on an existing kernel such as NOVA.
 		Each resource type has different properties so they will be evaluated separately.
 		Furthermore general conditions such as the kernels complexity and the integration of these concepts into Genode are discussed.
 		
 		\section{Requirements}
-		
-		
 		
 		% no kernel modifications 
 		% TODO
@@ -646,7 +646,7 @@ DIV=11,
 		
 		Memory mapped IO is a widely used mechanism to access hardware.
 		It maps hardware registers into the physical address space.
-		From the view of the operating system it looks as it is part of the available RAM.
+		From the software perspective it looks as it is part of the available RAM.
 		Yet these regions differ in behaviour to conventional registers.
 		Accesses to memory mapped IO cannot be cached as they might have side effects on hardware or other registers.
 		Even reading might influence the device.
@@ -656,14 +656,14 @@ DIV=11,
 		Also with 64 bit addressing the physical address space is large enough to prevent collisions with conventional RAM.
 		\citep{intelmanual}
 		
-		While memory mapped IO is much more important that IO ports Linux does not provide a good interface to use it from the user space.
+		While memory mapped IO is much more important that IO ports Linux does not provide a well defined interface to use it from the user space.
 		There is already a mechanism to access physical memory ranges from the user space on Linux, \texttt{/dev/mem}.
 		This is a special character device that can be used by a user space program to map a physical range of memory into its address space.
 		While this would be sufficient to make things "work" it lacks a more fine grained access control.
 		
 		Any process that is able to open that device and map its memory can access all the available ranges and not only what it is supposed to.
 		In newer kernels this has a small restriction that only IO memory can be mapped.
-		Before it was even possible to access the whole available memory, even that of the kernel and other processes. \citep{devmem}
+		In earlier versions it was even possible to access the whole available memory, even that of the kernel and other processes. \citep{devmem}
 		
 		Yet the access to only device memory ranges, but all of them, is still insufficient as a driver should only access the ranges its parent allowed it to.
 		This leads to the requirement of a more constrainable and controllable access mechanism.
@@ -709,7 +709,7 @@ DIV=11,
 		Also the direct access to files in \texttt{/sys} is disregarded since the structure of the file system can change.
 		To prevent effects of these changes it is recommended to use an abstraction layer such a udev or HAL.
 		These dependencies would furthermore increase the complexity of this approach.
-		Since Genodes \texttt{base-linux} does not depend yet on sysfs it could be removed from the kernel later.
+		Since Genodes base-linux does not depend yet on sysfs it could be removed from the kernel later.
 		That would not be true anymore if this approach was chosen. \citep{sysfs}
 		
 		\subsection{Fcntl}
@@ -818,6 +818,7 @@ DIV=11,
 		This should be done via a repository as explained in section \ref{repos}.
 		Since there is already a Linux specific implementation this should be reused in the solution.
 		with these constraints set there are three feasible ways to integrate.
+		The already available repository is called base-linux following the naming convention described in section \ref{repos}.
 		
 		\subsection{Copy base-linux}
 		The simplest way to build upon base-linux is creating a copy it in a new base directory.
@@ -843,13 +844,13 @@ DIV=11,
 		
 		%TODO explain that this has been chosen and why
 	
-		\section{Implementation}
+	\chapter{Implementation}
 		
 		Beside implementing the discussed conceptions the environment requires to be prepared.
 		This ranges from creating a boot sequence for Genode on Linux and a build process for the required image to acquiring hardware information and providing it in a compatible way.
 		Also the Linux kernel needed to be adapted to avoid resource access collisions with drivers running on Genode.
 		
-		\subsection{Booting Genode on Linux}
+		\section{Booting Genode on Linux}
 		\label{init}
 		
 		The first step was to generate an image that was bootable on Qemu and started Genode on Linux as init process.
@@ -933,7 +934,7 @@ menuentry 'Genode on Linux' {
 		To start Genode it changed into the \texttt{genode} directory and executes the \texttt{core} binary via \texttt{execve}.
 		This results in Genodes core component running as init process under Linux.
 		
-		\subsection{hwiodev}
+		\section{hwiodev}
 		\label{hwiodev}
 		
 		To provide hardware resources and overcome limitations of existing mechanisms a custom kernel module has been implemented.
@@ -1073,12 +1074,12 @@ int main()
 		It is explicitly designed to remap kernel memory to the user space and sets the correct flags for this memory to be used for I/O operations.
 		The resulting virtual address is not accessible in the kernel module since it resides in the user space but is returned by the \texttt{mmap} call.
 		
-		\subsection{Sessions}
+		\section{Sessions}
 		
 		To make the resources provided by the kernel module available to Genode both the \texttt{IO\_PORT} and \texttt{IO\_MEM} session need to be implemented.
 		Since their interfaces are required to compile Genode on Linux there are already dummy implementations that only emit warnings when used.
 		
-		\subsubsection{IO\_PORT}
+		\subsection{IO\_PORT}
 		
 		To use I/O ports on Linux the syscall \texttt{iopl} \citep{iopl} needs to be available.
 		Genode already implements some needed syscalls for example \texttt{mmap} or \texttt{write}.
@@ -1120,7 +1121,7 @@ inline int lx_iopl(int level)
 		It defines initialization and finalization of a session.
 		Since everything is initialized at this point only an empty implementation is required.
 		
-		\subsubsection{IO\_MEM}
+		\subsection{IO\_MEM}
 		
 		The \texttt{IO\_MEM} session has an analogous architecture to the \texttt{IO\_PORT} session.
 		Since it is available on all architectures it is registered with the platform services by default.
@@ -1419,7 +1420,7 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		
 		To support the full range of drivers the \texttt{IRQ} session is required.
 		The concept of a blocking read has been described in section \ref{irq} and is already used in related work \citep{uio}.
-		Also the performance of this approach needs to be evaluated.
+		Also the performance of this approach needs to be evaluated once more complex drivers are supported in base-linux.
 		This is important since interrupts are often time critical and require a low latency.
 		
 		A further important point is the integration into Genodes build system.
@@ -1432,7 +1433,7 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		First of all many drivers inside the kernel already collide with their user space counterparts such as both ACPI implementations.
 		Secondly the goal is to reduce the kernels complexity as far as possible.
 		To achieve this any functionality that is not required needs to be removed including usually always available interfaces such as \texttt{sysfs} \citep{sysfs} and \texttt{procfs} \citep{procfs}.
-		The Linux Kernel Tinification project \citep{tiny} done some work in that direction.
+		The Linux Kernel Tinification project \citep{tiny} has done some work in that direction.
 		Even though their goal it to create small kernel binaries for embedded platforms and not the reduction of complexity this work is a starting point for a further microkernelization of the Linux kernel.
 	
 	\bibliographystyle{unsrtnat}
