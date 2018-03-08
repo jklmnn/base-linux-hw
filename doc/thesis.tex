@@ -450,6 +450,8 @@ DIV=11,
 		
 		\section{Requirements}
 		
+		%TODO: short intro
+		
 		% run genode as userland
 		% privilege escalation
 		% keep isolation intact
@@ -468,31 +470,31 @@ DIV=11,
 		\subsection{Functional}
 		
 		\begin{enumerate}
-			\item Boot Genode on a bare  Linux kernel without any further userland. \label{req:boot}
+			\item \label{req:boot} Boot Genode on a bare  Linux kernel without any further userland.
 			No further user processes such as bash should run beside Genode.
-			\item Already available drivers on Genode should be usable without any modifications.
+			\item \label{req:drivers} Already available drivers on Genode should be usable without any modifications.
 			Furthermore the interface should support all drivers without the need to be modified itself, too.
-			\item Developed kernel modules should be able to be built directly in the kernel source and as a loadable module.
+			\item \label{req:modules} Developed kernel modules should be able to be built directly in the kernel source and as a loadable module.
 			This is required to support kernels without module support while also being able to debug the module more easily.
 		\end{enumerate}
 		
 		\subsection{Non-functional}
 		
 		\begin{enumerate}
-			\item Keep the Linux kernel complexity as low as possible.
+			\item \label{req:complexity} Keep the Linux kernel complexity as low as possible.
 			This includes dependencies introduces by functional requirements.
-			\item Remove drivers from the Linux kernel that collide with drivers available in Genode.
+			\item \label{req:strip} Remove drivers from the Linux kernel that collide with drivers available in Genode.
 			If two device drivers running simultaneously access the same hardware the behaviour cannot be defined any more.
-			\item Integrate the implementation into Genode in a way to keep the current and the additional functionality in parallel.
+			\item \label{req:integration} Integrate the implementation into Genode in a way to keep the current and the additional functionality in parallel.
 			Also current code should not be duplicated as this would increase maintenance effort highly.
 		\end{enumerate}
 		
 		\subsection{Security}
 		
 		\begin{enumerate}
-			\item Keep Genodes component isolation intact.
+			\item \label{req:isolation} Keep Genodes component isolation intact.
 			Processes should not be able to influence each other and communicate only in ways provided by Genode.
-			\item Configurable objects such as file descriptors that are created in core and passed to other components should have a trapping configuration.
+			\item \label{req:traps} Configurable objects such as file descriptors that are created in core and passed to other components should have a trapping configuration.
 			This means that they cannot be altered any more after being configured the first time.
 			
 		\end{enumerate}
@@ -559,30 +561,26 @@ DIV=11,
 		Also with 64 bit addressing the physical address space is large enough to prevent collisions with conventional RAM.
 		\citep{intelmanual}
 		
-		While memory mapped IO is much more important that IO ports Linux does not provide a well defined interface to use it from the user space.
-		There is already a mechanism to access physical memory ranges from the user space on Linux, \texttt{/dev/mem}.
-		This is a special character device that can be used by a user space program to map a physical range of memory into its address space.
-		While this would be sufficient to make things "work" it lacks a more fine grained access control.
-		
-		Any process that is able to open that device and map its memory can access all the available ranges and not only what it is supposed to.
-		In newer kernels this has a small restriction that only IO memory can be mapped.
-		In earlier versions it was even possible to access the whole available memory, even that of the kernel and other processes. \citep{devmem}
-		
-		Yet the access to only device memory ranges, but all of them, is still insufficient as a driver should only access the ranges its parent allowed it to.
-		This leads to the requirement of a more constrainable and controllable access mechanism.
-		
-		%TODO explain exact constrain requirements
 		
 		\subsection{Memory device}
 		
 		The easiest would be using \texttt{/dev/mem} which already has mapped all physical memory into the user space.
 		While on early kernel versions it was possible to access the whole memory current versions have the \texttt{CONFIG\_STRICT\_DEVMEM} configuration option enabled which only allows access to IO memory but not arbitrary RAM.
 		
-		Yet any process that holds a file descriptor can still access all IO ranges and therefore control nearly all hardware devices.
-		This cannot be constrained in any way which is a danger to Genodes process isolation.
-		While only core is able to open the file descriptor and pass it to a component the component needs to map the memory by itself.
-		Since it can map arbitrary regions of memory it would be able to control devices or interfere with other drivers without core having the ability to control or restrict such an action.
-		As this strongly violates the security assumptions this option should only be implemented if any other fails. \citep{devmem} 
+		While memory mapped IO is much more important that IO ports Linux does not provide a well defined interface to use it from the user space.
+		There is already a mechanism to access physical memory ranges from the user space on Linux, \texttt{/dev/mem}.
+		This is a special character device that can be used by a user space program to map a physical range of memory into its address space. \citep{devmem}
+		
+		Any process that is able to open that device and map its memory can access all the available ranges and not only what it is supposed to.
+		This means that for example a display driver that should only have access to its framebuffer memory can also access the ranges used by the network or audio driver.
+		This violates the security requirement \ref{req:isolation} which states that components must be isolated from each other.
+		In newer kernels this only applies to I/O memory and not main memory.
+		Yet it still does violate isolation since drivers can interfere with each other via I/O memory, too.
+		In earlier versions it was even possible to access the whole available memory, even that of the kernel and other processes. \citep{devmem}
+		
+		While this would be sufficient to satisfy the functional requirement \ref{req:drivers} it lacks a more fine grained access control.
+		To satisfy this requirement the access to memory regions needs to be constrained yet this is not possible in this case.
+		Therefore \texttt{/dev/mem} is not a viable option.
 		
 		\subsection{System call}
 		
@@ -654,7 +652,6 @@ DIV=11,
 		Furthermore this approach is still flexible enough to implement the required restrictions discussed earlier in this section.
 		It also can be built as a kernel module or inside the kernel source tree.
 		This makes applicable to both kernels that cannot be changed on the device and kernels that do not have support for loadable modules.
-		%TODO explain that this has been chosen and why
 		
 		\section{Interrupts}
 		\label{irq}
@@ -698,23 +695,6 @@ DIV=11,
 		This solution implements interrupts on Linux without polling and therefore should gain a feasible latency.
 		It also keeps the correct semantics of the implementation in Genode and should not require any workarounds.
 		
-%		\section{Complexity}
-%		
-%		%TODO put this in a better place / rework
-%		With security assumptions in mind enabling resource access for the user space is not the only requirement.
-%		The Linux kernel is a complex construct with millions of lines of code.
-%		To reduce this complexity as much unnecessary functionality as possible needs to be removed.
-%		Beside the removal of drivers that are provided by the user space system such as USB and graphics support also other subsystems that usually are not directly visible to the common user need to be taken care of.
-%		
-%		This is especially important for parts that could be used to implement other requirements.
-%		So it needs to be taken care of that nothing depends on those.
-%		These systems include \texttt{procfs} and \texttt{sysfs} which many user space interfacing drivers depend on. \citep{sysfs} \citep{procfs}
-%		
-%		Also some drivers are required to be removed not only because of complexity but their interference with drivers that should run in the user space.
-%		While the kernel might even allow multiple entities to access the same range of memory or IO ports this will likely cause errors.
-%		Since these mechanisms access hardware resources they are highly volatile which also means that changes made by one driver are visible in another accessing the same device.
-%		To prevent this any resource that is used by a user space driver must not be used by the kernel.
-		
 		\section{Integration into Genode}
 		
 		These concepts need to be integrated into Genodes source tree.
@@ -727,6 +707,7 @@ DIV=11,
 		The simplest way to build upon base-linux is creating a copy it in a new base directory.
 		The advantage of this approach lies in the fact that there is, beside including the new directory, no need to modify upstream code.
 		On the other hand this leads to code duplication and any updates of base-linux probably need to be ported to its modified copy.
+		Beside being the most effort less option in the first place it has an increased maintenance effort over time as stated in requirement \ref{req:integration}.
 		
 		\subsection{Include base-linux}
 		Creating a new base directory and including the needed contents from base-linux via Makefile fragments.
@@ -744,8 +725,6 @@ DIV=11,
 		A lot of the existing code can be reused or extended easily.
 		It also reduces the integration effort since it is already fully supported by the build system.
 		Otherwise a complete new kernel needs to be added to it including dependency selection and image creation.
-		
-		%TODO explain that this has been chosen and why
 	
 	\chapter{Implementation}
 		
