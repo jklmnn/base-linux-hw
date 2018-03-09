@@ -48,9 +48,9 @@ append config {
 			<service name="CPU">    <parent/> </service>
                         <service name="ROM">    <parent/> </service>
                         <service name="IO_PORT"><parent/></service>
+                        <service name="IRQ"><parent/></service>
                         <!--
                         <service name="IO_MEM"><parent/></service>
-                        <service name="IRQ"><parent/></service>
                         -->
 		</route>
 		<config acpi="no" verbose="yes">
@@ -106,7 +106,7 @@ install_config $config
 # generic modules
 set boot_modules {
     core init ld.lib.so
-    platform_drv
+    platform_drv ps2_drv
     test-input
 }
 
