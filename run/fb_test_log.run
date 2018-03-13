@@ -14,6 +14,12 @@ set build_components {
         test/framebuffer
 }
 
+set fb_drv "fb_drv"
+
+if {[have_include "image/uefi"]} {
+	set fb_drv "fb_boot_drv"
+}
+
 source ${genode_dir}/repos/base/run/platform_drv.inc
 append_platform_drv_build_components
 
@@ -93,6 +99,7 @@ append config {
         <!-- framebuffer driver -->
 
         <start name="fb_drv">
+            <binary name="} $fb_drv {"/>
             <resource name="RAM" quantum="4M"/>
             <provides>
                 <service name="Framebuffer"/>
@@ -131,11 +138,12 @@ install_config $config
 set boot_modules {
 	core init ld.lib.so
 	timer 
-        fb_drv
         initramfs
         platform_drv
 	test-framebuffer
 }
+
+append boot_modules $fb_drv
 
 append_platform_drv_boot_modules
 
