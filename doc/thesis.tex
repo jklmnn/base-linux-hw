@@ -320,6 +320,59 @@ DIV=11,
 		But a few of them, prefixed with \texttt{base}, implement the core component which provides the basic resources and is the direct or indirect parent of all others.
 		Since it is platform dependent there exist multiple of these implementations named \texttt{base-<platform>}. \citep{genode}
 		
+		\section{Hardware resources}
+		\label{hwres}
+		
+		To interface with peripheral devices drivers require access to them.
+		To enable this access three basic resources are provided, IO ports, memory mapped IO and interrupts.
+		
+		\subsection{IO Ports}
+		
+		IO ports or port IO is a mechanism used mainly on the Intel x86 architecture.
+		It consists of a hardware bus that is connected directly to the processor and peripheral devices.
+		The ports can be used for bidirectional communication similar to a serial interface.
+		Access is handled through a specific set of instructions that take addresses and data.
+		A special benefit of this mechanism is its atomicity.
+		Instructions are guaranteed to be finished before the execution of their successors.
+		
+		There are 2\textsuperscript{16} addressable ports which transmit 8 bit of data per transaction.
+		Consecutive ports can be used to transmit up to 32 bit at once.
+		To make use of this the ports need to be aligned on even addresses (for 16 bit transmissions) or on multiples of four (for 32 bit transmissions).
+		Other alignments are possible but come with a performance loss.
+		
+		On modern systems this mechanism often supports legacy hardware such as PS/2 or a floppy disk controllers.
+		Also many other architectures lack this type of communication and use memory mapped IO which is also increasingly used with Intel x86 hardware.
+		\citep{ioports} \citep{intelmanual}
+		
+		\subsection{Memory mapped IO}
+		
+		Memory mapped IO is a widely used mechanism to access hardware.
+		It maps hardware registers into the physical address space.
+		From the software perspective it looks as it is part of the available RAM.
+		Yet these regions differ in behaviour to conventional registers.
+		Accesses to memory mapped IO cannot be cached as they might have side effects on hardware or other registers.
+		Even reading might influence the device.
+		This is important especially in exception handling where accesses might be repeated.
+		
+		Memory mapped IO is widely used on different architectures as it provides a clear interface and enables the transfer of substantial amounts of data.
+		Also with 64 bit addressing the physical address space is large enough to prevent collisions with conventional RAM.
+		\citep{intelmanual}
+		
+		\subsection{Interrupts}
+		
+		Interrupts are asynchronous events sent by external devices.
+		Beside the so called interrupt number no further information is transmitted.
+		Also this is a single directional channel.
+		Interrupts are triggered by a device and received by the CPU.
+		
+		When an interrupt occurs the execution of the current task is interrupted by the CPU and a handler procedure is called.
+		The handler is registered to one of the 18 predefined or 224 user defined interrupts.
+		When it is called the only information available is that one of the interrupts it was registered to has been triggered.
+		Any further information needs to be acquired through other channels, for example memory mapped IO. \citep{intelmanual}
+		
+		This mechanism is usually used for devices that wait for events such as keyboards.
+		Instead of checking periodically if a key has been pressed it registers an interrupt that is triggered once a key is pressed.
+		Then the driver can check which key has been pressed and pass this information to the operating system.
 	
 	\chapter{Related work}
 		
@@ -445,10 +498,8 @@ DIV=11,
 		Even though the amount of different busses is large, access to them can be broken down to a few mechanisms.
 		Commands to the driver on the SATA bus are just an abstraction to what needs to be communicated with the SATA controller. \citep{iosystems}
 		
-		This chapter will evaluate how these resources are handled in other base platforms supported by Genode and what is needed to enable them on Linux.
-		To do this the required resources need to be identified first which is done on an existing kernel such as NOVA.
-		Each resource type has different properties so they will be evaluated separately.
-		Furthermore general conditions such as the kernels complexity and the integration of these concepts into Genode are discussed.
+		This chapter evaluates how these resources are handled in other base platforms supported by Genode and what is needed to enable them on Linux.
+		To do this the functional, non-functional and security requirements will be identified first which is done on the microkernel NOVA.
 		
 		\section{Requirements}
 		
@@ -473,9 +524,9 @@ DIV=11,
 		
 		\begin{enumerate}
 			\item \label{req:boot} Boot Genode on a bare  Linux kernel without any further userland.
-			No further user processes such as bash should run beside Genode.
+			No further user processes such as bash should be required beside Genode.
 			\item \label{req:drivers} Already available drivers on Genode should be usable without any modifications.
-			Furthermore the interface should support all drivers without the need to be modified itself, too.
+			Furthermore the kernel should support all drivers without the need to be modified itself, too.
 			\item \label{req:modules} Developed kernel modules should be able to be built directly in the kernel source and as a loadable module.
 			This is required to support kernels without module support while also being able to debug the module more easily.
 		\end{enumerate}
@@ -485,10 +536,7 @@ DIV=11,
 		\begin{enumerate}
 			\item \label{req:complexity} Keep the Linux kernel complexity as low as possible.
 			This includes dependencies introduces by functional requirements.
-			\item \label{req:strip} Remove drivers from the Linux kernel that collide with drivers available in Genode.
-			If two device drivers running simultaneously access the same hardware the behaviour cannot be defined any more.
-			\item \label{req:integration} Integrate the implementation into Genode in a way to keep the current and the additional functionality in parallel.
-			Also current code should not be duplicated as this would increase maintenance effort highly.
+			\item \label{req:integration} Integrate the implementation into Genode in a way to be able to configure if Genode should run directly on the host system or on a bare Linux kernel on Qemu.
 		\end{enumerate}
 		
 		\subsection{Security}
@@ -498,26 +546,14 @@ DIV=11,
 			Processes should not be able to influence each other and communicate only in ways provided by Genode.
 			\item \label{req:traps} Configurable objects such as file descriptors that are created in core and passed to other components should have a trapping configuration.
 			This means that they cannot be altered any more after being configured the first time.
+			Otherwise components would be able to escalade their privileges and violate restrictions set on them by core.
 			
 		\end{enumerate}
+	
+		To fulfil functional requirement \ref{req:drivers} and support drivers in the user space on Linux their required resources as described in section \ref{hwres} need to be available.
+		For each resource different approaches are evaluated according to the listed requirements.
 		
 		\section{IO Ports}
-		
-		IO ports or port IO is a mechanism used mainly on the Intel x86 architecture.
-		It consists of a hardware bus that is connected directly to the processor and peripheral devices.
-		The ports can be used for bidirectional communication similar to a serial interface.
-		Access is handled through a specific set of instructions that take addresses and data.
-		A special benefit of this mechanism is its atomicity.
-		Instructions are guaranteed to be finished before the execution of their successors.
-		
-		There are 2\textsuperscript{16} addressable ports which transmit 8 bit of data per transaction.
-		Consecutive ports can be used to transmit up to 32 bit at once.
-		To make use of this the ports need to be aligned on even addresses (for 16 bit transmissions) or on multiples of four (for 32 bit transmissions).
-		Other alignments are possible but come with a performance loss.
-		
-		On modern systems this mechanism often supports legacy hardware such as PS/2 or a floppy disk controllers.
-		Also many other architectures lack this type of communication and use memory mapped IO which is also increasingly used with Intel x86 hardware.
-		\citep{ioports} \citep{intelmanual}
 		
 		The implementation of of the \texttt{IO\_Port} session on Linux can be done straight forward.
 		This is because IO ports are already available in the user space.
@@ -551,18 +587,8 @@ DIV=11,
 		
 		\section{Memory mapped IO}
 		
-		Memory mapped IO is a widely used mechanism to access hardware.
-		It maps hardware registers into the physical address space.
-		From the software perspective it looks as it is part of the available RAM.
-		Yet these regions differ in behaviour to conventional registers.
-		Accesses to memory mapped IO cannot be cached as they might have side effects on hardware or other registers.
-		Even reading might influence the device.
-		This is important especially in exception handling where accesses might be repeated.
-		
-		Memory mapped IO is widely used on different architectures as it provides a clear interface and enables the transfer of substantial amounts of data.
-		Also with 64 bit addressing the physical address space is large enough to prevent collisions with conventional RAM.
-		\citep{intelmanual}
-		
+		While Linux enables I/O memory access in the user space through a special memory device this is only a very basic approach that does not fulfil all requirements.
+		To find a feasible solution multiple approaches are evaluated.
 		
 		\subsection{Memory device}
 		
@@ -653,24 +679,10 @@ DIV=11,
 		
 		Furthermore this approach is still flexible enough to implement the required restrictions discussed earlier in this section.
 		It also can be built as a kernel module or inside the kernel source tree.
-		This makes applicable to both kernels that cannot be changed on the device and kernels that do not have support for loadable modules.
+		This makes applicable to both kernels that cannot be changed on the device and kernels that do not have support for loadable modules as described in functional requirement \ref{req:modules}.
 		
 		\section{Interrupts}
 		\label{irq}
-		
-		Interrupts are asynchronous events sent by external devices.
-		Beside the so called interrupt number no further information is transmitted.
-		Also this is a single directional channel.
-		Interrupts are triggered by a device and received by the CPU.
-		
-		When an interrupt occurs the execution of the current task is interrupted by the CPU and a handler procedure is called.
-		The handler is registered to one of the 18 predefined or 224 user defined interrupts.
-		When it is called the only information available is that one of the interrupts it was registered to has been triggered.
-		Any further information needs to be acquired through other channels, for example memory mapped IO. \citep{intelmanual}
-		
-		This mechanism is usually used for devices that wait for events such as keyboards.
-		Instead of checking periodically if a key has been pressed it registers an interrupt that is triggered once a key is pressed.
-		Then the driver can check which key has been pressed and pass this information to the operating system.
 		
 		The Linux kernel does not allow to register an interrupt handler in the user space.
 		It is possible to see and observer interrupts in \texttt{/proc/interrupts} yet polling them from this file is not feasible as they are often require a low latency.
