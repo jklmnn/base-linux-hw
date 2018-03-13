@@ -256,11 +256,12 @@ DIV=11,
 		
 		\subsection{Components}
 		
-		Genode based systems are compounded on components.
+		Genode based systems are based on components.
 		These can be drivers, services, applications.
-		Their outer interface is defined by the sessions they require and provide.
+		Their public interface to other components is defined by the sessions they require and provide.
 		Beside these sessions they are isolated from each other.
 		Components do not have any information about their communication partners but only about the type of the sessions they use.
+		This type information is provided by a capability that a component needs to use it.
 		Due to this property the can be replaced transparently by other components providing or using the same sessions. \citep{genode}
 		
 		A graphical application for example requires a framebuffer session to draw its user interface.
@@ -268,7 +269,9 @@ DIV=11,
 		The only information the application has are width height and color mode of the framebuffer.
 		Yet it cannot conclude what is providing it.
 		If the system is moved to another hardware that requires a different display driver.
-		The display driver component can be replaced with another one without affecting the application using the framebuffer session. \citep{genode}
+		The display driver component can be replaced with another one without affecting the application using the framebuffer session \citep{genode}.
+		Also there is no restriction in the implementation of a session.
+		The framebuffer for example could also be provided by a component that only uses a window of another framebuffer.
 		
 		A special case is the core component.
 		It is the parent of all other components and provides the initially required sessions.
@@ -279,20 +282,19 @@ DIV=11,
 		\label{sessions}
 		
 		Sessions in Genode provide a way to communicate between components but also an abstraction for platform dependent concepts.
-		Their semantics are similar to remote procedure calls but with additional type information.
+		Their semantics are equal to remote procedure calls.
 		To do an RPC call to a specific session a capability of the same type as the session has to be owned by the caller.
-		They are divided into two groups, one for the core tasks and one for the operating system level.
-		
-		The core session include basic resources such as protection domains, RAM and CPU.
+		The core sessions include basic resources such as protection domains, RAM and CPU.
 		More important for this thesis they also provide hardware access abstractions for I/O memory, I/O ports and interrupts.
 		Since logging is an important part of every system it is also included here.
 		
-		All of them are provided by the core component.
+		All of them are initially provided by the core component.
 		As the implementation of this group is often not or hardly portable each platform requires its own adaptions.
 		They are implemented in the base repositories as described in section \ref{repos}.
-		
-		The operating system level sessions are mostly platform independent and only rely on the abstractions made by the core component.
-		They provide functionality such as framebuffers, network interface cards, timers or file systems. \citep{genode}
+		Further session types are only rely on the abstractions made by the core component.
+		They provide functionality such as framebuffers, network interface cards, timers or file systems \citep{genode}.
+		Even though sessions are grouped in the documentation they are equal in their architecture.
+		Also components can implement and provide basic sessions such as I/O memory.
 		
 		\subsection{Repositories}
 		\label{repos}
