@@ -1415,6 +1415,14 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		The \texttt{IO\_MEM} session had some medium issues.
 		The first test was done with \texttt{fb\_boot\_drv} which maps a single physical address and provides a framebuffer interface.
 		A component testing the framebuffer by drawing different colours to the screen was used and showed the expected results on both the virtual machine and the laptop.
+		A photo of \texttt{fb\_boot\_drv} running the framebuffer test on the laptop is included as figure \ref{testfbx260}.
+
+		\begin{figure}
+			\centering
+			\includegraphics[width=0.8\textwidth]{framebuffer_linux_x260.png}
+			\caption{Test framebuffer on Genode on Linux}
+			\label{testfbx260}
+		\end{figure}		
 		
 		The \texttt{acpi\_drv} and \texttt{fb\_drv} were more difficult.
 		Both of them map and release different chunks pf physical memory.
