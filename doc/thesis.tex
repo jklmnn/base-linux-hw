@@ -14,6 +14,10 @@ DIV=11,
 \usepackage[numbers]{natbib}
 \usepackage{cite}
 
+\usepackage{color, colortbl}
+\definecolor{LightGreen}{rgb}{0.83, 0.91, 0.83}
+\definecolor{LightYellow}{rgb}{1.0, 0.95, 0.8}
+
 \input{genode-manual/manual/img/tikz-preamble.tex}
 \input{genode-manual/manual/img/tikz-common.tex}
 
@@ -1225,6 +1229,9 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 				audio\_drv    &
 				Audio driver, supported by the integrated
 				\\& Realtek ALC3245 chipset \citep{x260}
+				\\  \hline
+				ps2\_drv      &
+				PS2 mouse and keyboard driver, x86 specific
 			\end{tabular}
 			\caption{Used drivers}
 			\label{driver_selection}
@@ -1390,16 +1397,22 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		& \rotatebox[]{90}{IO\_MEM (Platform)}
 		& \rotatebox[]{90}{IRQ (Platform)} \\ \hline
 				
+				\rowcolor{LightGreen}
 				platform\_drv &   & x &   & &   &   &   &   \\ \hline
+				\rowcolor{LightYellow}
 				acpi\_drv     &   &   & x & &   &   &   &   \\ \hline
+				\rowcolor{LightGreen}
 				fb\_boot\_drv & x &   & x & &   &   &   &   \\ \hline
+				\rowcolor{LightGreen}
 				rtc\_drv      &   & x &   & &   &   &   &   \\ \hline
 				usb\_drv      & x &   &   & & x & x & x & x \\ \hline
 				intel\_fb     & x &   & x & & x & x & x & x \\ \hline
 				ahci\_drv     & x &   & x & & x & x & x & x \\ \hline
+				\rowcolor{LightYellow}
 				fb\_drv       & x & x & x & & x & x &   &   \\ \hline
 				nic\_drv      & x &   &   & & x & x & x & x \\ \hline
-				audio\_drv    & x &   &   & & x & x & x & x
+				audio\_drv    & x &   &   & & x & x & x & x \\ \hline
+				ps2\_drv      &   & x &   & & x &   &   & x 
 			\end{tabular}
 			\caption{Device driver resource requirements}
 			\label{drivers}
@@ -1453,6 +1466,10 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		On the laptop the driver did not come up.
 		Furthermore it hung at a point that never caused any problems in the virtual machine.
 		Due to the constrained debug methods on this platforms this issue was not further researched.
+		
+		Table \ref{drivers} shows an overview over the results.
+		Drivers that worked without any problems are marked green while those that work conceptually but are unstable or cause faults are marked yellow.
+		All unmarked drivers have not yet been tested.
 	
 	\chapter{Conclusion}
 	
