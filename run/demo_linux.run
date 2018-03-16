@@ -1,0 +1,275 @@
+#
+# Build
+#
+
+if {[have_spec odroid_xu]} {
+	puts "Run script does not support this platform."
+	exit 0
+}
+
+set build_components {
+	core init
+	drivers/timer
+	server/nitpicker app/pointer app/status_bar app/global_keys_handler
+	app/nit_focus
+	server/liquid_framebuffer app/launchpad app/scout
+	test/nitpicker server/nitlog
+        drivers/framebuffer drivers/input drivers/platform
+	server/report_rom server/rom_filter
+        lib/initramfs
+}
+
+source ${genode_dir}/repos/base/run/platform_drv.inc
+
+build $build_components
+
+create_boot_directory
+
+#
+# Generate config
+#
+
+append config {
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<default caps="100"/>
+
+	<start name="fb_boot_drv">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="Framebuffer"/></provides>
+	</start>
+
+	<start name="ps2_drv">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Input"/></provides>
+	</start>
+
+        <start name="platform_drv"  caps="800">
+            <resource name="RAM" quantum="4M" constrain_phys="yes"/>
+            <provides>
+                <service name="Platform"/>
+            </provides>
+            <route>
+                <service name="LOG"><parent/></service>
+                <service name="PD">     <parent/> </service>
+                <service name="CPU">    <parent/> </service>
+                <service name="ROM">    <parent/> </service>
+                <service name="IO_PORT"><parent/></service>
+                <service name="IRQ"><parent/></service>
+            </route>
+            <config acpi="no" verbose="yes">
+                <policy label_prefix="ps2_drv">  <device name="PS2"/> </policy>
+                <policy label_prefix="nic_drv">  <pci class="ETHERNET"/> </policy>
+                <policy label_prefix="fb_drv">   <pci class="VGA"/> </policy>
+                <policy label_prefix="wifi_drv"> <pci class="WIFI"/> </policy>
+                <policy label_prefix="usb_drv">  <pci class="USB"/> </policy>
+                <policy label_prefix="ahci_drv"> <pci class="AHCI"/> </policy>
+                <policy label_prefix="audio_drv"> <pci class="AUDIO"/> <pci class="HDAUDIO"/> </policy>
+                <policy label_prefix="intel_fb_drv" irq_mode="nomsi">
+                    <pci class="VGA"/>
+                    <pci bus="0" device="0" function="0"/>
+                    <pci class="ISABRIDGE"/>
+                </policy>
+                <policy label_prefix="test-pci"> <pci class="ALL"/> </policy>
+            </config>
+        </start>
+
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+	</start>
+
+	<start name="report_rom">
+		<resource name="RAM" quantum="1M"/>
+		<provides> <service name="Report"/> <service name="ROM"/> </provides>
+		<config verbose="no">
+			<policy label="status_bar -> focus"          report="nitpicker -> focus"/>
+			<policy label="nitpicker_config -> xray"     report="global_keys_handler -> xray"/>
+			<policy label="global_keys_handler -> hover" report="nitpicker -> hover"/>
+			<policy label="nit_focus -> clicked"         report="nitpicker -> clicked"/>
+			<policy label="nitpicker -> focus"           report="nit_focus -> focus"/>
+		</config>
+	</start>
+
+	<start name="nitpicker_config">
+		<binary name="rom_filter"/>
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="ROM"/></provides>
+		<config>
+			<input name="xray_enabled" rom="xray" node="xray">
+				<attribute name="enabled" /> </input>
+
+			<output node="config">
+				<attribute name="focus" value="rom"/>
+				<inline>
+					<report focus="yes" xray="yes" hover="yes" keystate="yes"
+					        clicked="yes"/>
+					<domain name="pointer" layer="1" origin="pointer"
+					        content="client" label="no"/>
+					<domain name="panel" layer="2"
+					        content="client" label="no" hover="always"/>
+				</inline>
+				<if>
+					<has_value input="xray_enabled" value="no" />
+					<then>
+						<inline>
+							<domain name="launchpad" layer="3"
+							        content="client" label="no" hover="always" focus="click"
+							        ypos="18" height="-18" />
+							<domain name="" layer="3"
+							        content="client" label="no" hover="always" focus="click"
+							        ypos="18" height="-18" />
+						</inline>
+					</then>
+					<else>
+						<inline>
+							<domain name="launchpad" layer="3" color="#dd0000"
+							        content="tinted" label="yes" hover="focused" focus="click"
+							        ypos="18" height="-18" />
+							<domain name="" layer="3" color="#55dd34"
+							        content="tinted" label="yes" hover="focused" focus="click"
+							        ypos="18" height="-18" />
+						</inline>
+					</else>
+				</if>
+				<inline>
+					<policy label_prefix="pointer"            domain="pointer"/>
+					<policy label_prefix="status_bar"         domain="panel"/>
+					<policy label_prefix="scout -> launchpad" domain="launchpad"/>
+					<default-policy                           domain=""/>
+
+					<global-key name="KEY_SCROLLLOCK" label="global_keys_handler -> input" />
+					<global-key name="KEY_F1"         label="global_keys_handler -> input" />
+					<global-key name="KEY_F2"         label="global_keys_handler -> input" />
+				</inline>
+			</output>
+		</config>
+		<route>
+			<service name="ROM" label="xray"> <child name="report_rom"/> </service>
+			<any-service> <parent/> </any-service>
+		</route>
+	</start>
+
+	<start name="global_keys_handler">
+		<resource name="RAM" quantum="1M"/>
+		<config>
+			<bool name="xray" initial="no"/>
+
+			<press   name="KEY_SCROLLLOCK" bool="xray" change="toggle"/>
+			<press   name="KEY_F1"         bool="xray" change="on"/>
+			<release name="KEY_F1"         bool="xray" change="off"/>
+			<press   name="KEY_F2"         bool="xray" change="toggle"/>
+
+			<report name="xray" delay_ms="125">
+				<hovered domain="panel"/>
+				<bool name="xray"/>
+			</report>
+		</config>
+		<route>
+			<service name="Report"> <child name="report_rom"/> </service>
+			<service name="ROM" label="hover"> <child name="report_rom"/> </service>
+			<any-service> <parent/> <any-child/> </any-service>
+		</route>
+	</start>
+
+	<start name="nitpicker">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Nitpicker"/></provides>
+		<configfile name="nitpicker.config"/>
+		<route>
+			<service name="ROM" label="nitpicker.config">
+				<child name="nitpicker_config"/> </service>
+			<service name="ROM" label="focus">
+				<child name="report_rom"/> </service>
+			<service name="Report">
+				<child name="report_rom"/> </service>
+			<any-service> <parent/> <any-child/> </any-service>
+		</route>
+	</start>
+
+	<start name="pointer">
+		<resource name="RAM" quantum="1M"/>
+		<config/>
+	</start>
+
+	<start name="nit_focus">
+		<resource name="RAM" quantum="1M"/>
+		<config> <default-policy focus="yes"/> </config>
+		<route>
+			<service name="ROM" label="clicked"> <child name="report_rom"/> </service>
+			<service name="Report"> <child name="report_rom"/> </service>
+			<any-service> <parent/> </any-service>
+		</route>
+	</start>
+
+	<start name="status_bar">
+		<resource name="RAM" quantum="1M"/>
+		<route>
+			<service name="ROM" label="focus"> <child name="report_rom"/> </service>
+			<any-service> <parent/> <any-child/> </any-service>
+		</route>
+	</start>
+
+	<start name="scout" caps="10000">
+		<resource name="RAM" quantum="64M" />
+	</start>
+</config>}
+
+install_config $config
+
+#
+# Create launchpad configuration
+#
+set launchpad_config_fd [open "bin/launchpad.config" w]
+puts $launchpad_config_fd {<config>
+	<launcher name="testnit"   ram_quota="768K" caps="50"/>
+	<launcher name="scout"     ram_quota="41M"  caps="200"/>
+	<launcher name="launchpad" ram_quota="6M"   caps="1000">
+		<configfile name="launchpad.config" />
+	</launcher>
+	<launcher name="nitlog"    ram_quota="1M" caps="50"/>
+	<launcher name="liquid_fb" ram_quota="7M" caps="70">
+		<config resize_handle="on" />
+	</launcher>
+	<launcher name="nitpicker" ram_quota="1M" caps="70">
+		<config>
+			<domain name="" layer="3" conten="client" label="no" focus="click"/>
+			<default-policy domain="" />
+		</config>
+	</launcher>
+</config>}
+close $launchpad_config_fd
+
+
+#
+# Boot modules
+#
+
+# generic modules
+set boot_modules {
+	core ld.lib.so init
+	timer
+	nitpicker pointer status_bar report_rom rom_filter global_keys_handler
+	nit_focus
+	liquid_fb launchpad scout testnit nitlog
+        fb_boot_drv ps2_drv platform_drv
+        initramfs
+	launchpad.config
+}
+
+build_boot_image $boot_modules
+
+
+run_genode_until forever
