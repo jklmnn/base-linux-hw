@@ -849,9 +849,11 @@ menuentry 'Genode on Linux' {
 		
 		The \texttt{hwio} module implements \texttt{open} and \texttt{close} to manage the required memory structures and \texttt{ioctl} and \texttt{mmap} to configure and use the device.
 		The implementation is based on \texttt{/dev/mem} \citep{devmem}.
-		Yet unneeded parts of it, such as \texttt{read} and \texttt{write} have been omitted.
-		On the other hand it has been extended with functionality to configure and constrain accessible memory regions for each file descriptor.
+		The \texttt{read} call is used to implement an interrupt signaler.
+		It blocks until the registered interrupt is triggered.
 		
+		\subsection{I/O memory}
+		\label{hwioiomem}
 		
 		An example how a mapping of a physical memory range is done with this kernel module is given in listing \ref{usehwio}.
 		It shows how the VGA character frame buffer which is located at address \texttt{0xb8000} and has a size of 4kB is mapped and used.
@@ -877,7 +879,7 @@ menuentry 'Genode on Linux' {
 		This could be an implementation of a VGA driver for example.
 		
 		\lstset{language=C,
-			caption={Using hwiodev},
+			caption={Mapping memory with hwiodev},
 			label=usehwio,
 			breaklines=true,
 			numbers=left,
@@ -931,8 +933,11 @@ int main()
 		It is also passed to all required calls, \texttt{open}, \texttt{ioctl}, \texttt{mmap} and \texttt{close}.
 		It also has a field \texttt{private\_data} which is explicitly meant to be used by drivers to store custom data.
 		
-		When \texttt{open} is called it allocates a \texttt{mmio\_range\_t} object with \texttt{kmalloc} on the \texttt{private\_data} of the file structure.
-		This internal object is defined equally to the one at line 9 in listing \ref{usehwio}.
+		When \texttt{open} is called it allocates a \texttt{hwio\_data\_t} object with \texttt{kmalloc} on the \texttt{private\_data} of the file structure.
+		The \texttt{hwio\_data\_t} is a structure containing the type of the file descriptor and, according to the type, the configuration of either the memory range or the interrupt.
+		There are three types implemented, \texttt{T\_UNCONFIGURED} which is the default value until configuration, \texttt{T\_MMIO} that is used for memory mapped I/O and \texttt{T\_IRQ} for interrupts.
+		In the user space only the \texttt{mmio\_range\_t} structure is relevant.
+		It is defined at line 9 in listing \ref{usehwio}.
 		Both the physical address and the length are set to zero.
 		
 		The implementation of \texttt{ioctl} gets, beside the file structure, a command and a pointer to further arguments passed.
@@ -977,6 +982,74 @@ int main()
 		This function takes the virtual memory area and maps the requested physical memory to it.
 		It is explicitly designed to remap kernel memory to the user space and sets the correct flags for this memory to be used for I/O operations.
 		The resulting virtual address is not accessible in the kernel module since it resides in the user space but is returned by the \texttt{mmap} call.
+		
+		\subsection{Interrupts}
+		
+		Interrupts are configured analogously to memory mappings.
+		A file descriptor is opened and the configured via \texttt{ioctl}.
+		In this case the macro \texttt{SET\_IRQ} is used and a pointer to an integer is passed.
+		This integer contains the interrupt number.
+		In the example in listing \ref{hwioirq} shows this for interrupt number 1 which is the PS2 keyboard interrupt.
+		Once the file descriptor is configured \texttt{read} is called.
+		On each keypress, which triggers a keyboard interrupt, read returns and a message is printed.
+		
+		\lstset{language=C,
+			caption={Using interrupts with hwiodev},
+			label=hwioirq,
+			breaklines=true,
+			numbers=left,
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0.7},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>Once the file descriptor is configured \texttt{read} is called.
+On each keypress, which triggers a keyboard interrupt, read returns and a message is printed.
+#include <sys/ioctl.h>
+#include <unistd.h>
+		
+#define IRQ_SET _IOW('g', 2, int*)
+
+int main(int argc, char *argv[])
+{  		
+	int irq = 1;
+	int fd = open("/dev/hwio", O_RDWR|O_SYNC);
+	if (fd < 0){ 
+	perror("open");
+		return 2;
+	}   
+		
+	if(ioctl(fd, IRQ_SET, &irq) < 0){ 
+		perror("ioctl irq");
+		return 3;
+	}   
+		
+	while (read(fd, 0, 0) == 0){ 
+		printf("irq triggered\n");
+	}   
+		
+		
+	close(fd);
+		
+	return 0;
+}
+		
+		\end{lstlisting}
+		
+		Internally it uses a Linux \texttt{wait\_queue\_head\_t} to signal the interrupt.
+		The \texttt{open} call is equal to the description in section \ref{hwioiomem}.
+		The \texttt{ioctl} handling is a bit different.
+		First the integer value that contains the interrupt number is copied from the user space.
+		Then the interrupt is registered and the wait queue is initialized.
+		Also the interrupt handler \texttt{irq\_dispatcher} is registered to be called once an interrupt is triggered.
+		
+		When \texttt{read} is called the call halts on \texttt{wait\_event\_interruptible}, a Linux kernel locking mechanism based on the wait queue.
+		Once \texttt{irq\_dispatcher} gets called through an interrupt it calls \texttt{wake\_up\_all} which releases the lock in \texttt{read}.
 		
 		\section{Sessions}
 		
@@ -1045,7 +1118,7 @@ inline int lx_iopl(int level)
 		This is done based on the parameters the session was opened with.
 		
 		\lstset{language=C,
-			caption={Custom \texttt{ioctl} syscall on Genode},
+			caption={Custom \texttt{ioctl} syscall for memory mapping on Genode},
 			label=lxioctl,
 			breaklines=true,
 			numbers=left,
@@ -1074,6 +1147,36 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		Since on Linux a mapping is only valid for the process that has created it the component has to call \texttt{mmap} on the file descriptor itself when it requests the dataspace from the capability.
 		The constrain by the syscall enforces that only the memory that was requested prior can be mapped now.
 		Since the configuration can only be done once the component is also unable to change that setting.
+		
+		\subsection{IRQ}
+		
+		The \texttt{IRQ} session uses a separate thread to schedule its interrupts.
+		A component using the \texttt{IRQ} session only registers a signal handler on an interrupt number.
+		The session starts the \texttt{Irq\_object} thread which handles the actual interrupts.
+		On start it associates the interrupt by opening \texttt{/dev/hwio} and configuring the file descriptor with \texttt{lx\_ioctl\_irq}, a wrapper around Linux' \texttt{ioctl} system call.
+		Its implementation is shown in listing \ref{lxioctlirq}.
+		
+		\lstset{language=C,
+			caption={Custom \texttt{ioctl} syscall for interrupts on Genode},
+			label=lxioctlirq,
+			breaklines=true,
+			numbers=left,
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0.7},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+inline int lx_ioctl_irq(int fd, int irq)
+{
+	return lx_syscall(SYS_ioctl, fd, _IOW('g', 2, int*), &irq);
+}
+		\end{lstlisting}
+		
+		Once the association was successful it enters an endless loop that reads on the file descriptor.
+		When an interrupt is triggered, \texttt{read} returns and a signal is emitted which calls the handler function registered by the component.
+		It the waits for the component to acknowledge the interrupt.
+		Once this is done the loop begins again and waits for the next interrupt.
 		
 		\section{Platform info}
 		\label{pinfo}
@@ -1284,43 +1387,43 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 			commentstyle=\color[rgb]{0.133,0.545,0.133},
 			stringstyle=\color[rgb]{0.627,0.126,0.941}}
 		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-		<config prio_levels="2" verbose="yes">
-		
-		<parent-provides>
-		<service name="ROM"/>
-		<service name="IRQ"/>
-		<service name="IO_MEM"/>
-		<service name="IO_PORT"/>
-		<service name="PD"/>
-		<service name="RM"/>
-		<service name="CPU"/>
-		<service name="LOG"/>
-		</parent-provides>
-		
-		<default-route>
-		<any-service> <parent/> <any-child/> </any-service>
-		</default-route>
-		<default caps="100"/>
-		
-		<start name="timer">
-		<resource name="RAM" quantum="1M"/>
-		<provides> <service name="Timer"/> </provides>
-		</start>
-		
-		<start name="rtc_drv" priority="-1">
-		<resource name="RAM" quantum="1M"/>
-		<provides><service name="Rtc"/></provides>
-		</start>
-		
-		<start name="rtc_drv" priority="-1">
-		<resource name="RAM" quantum="1M"/>
-		<provides><service name="Rtc"/></provides>
-		</start>
-		
-		<start name="test-rtc" priority="-1">
-		<resource name="RAM" quantum="1M"/>
-		</start>
-		</config>
+<config prio_levels="2" verbose="yes">
+
+    <parent-provides>
+        <service name="ROM"/>
+        <service name="IRQ"/>
+        <service name="IO_MEM"/>
+        <service name="IO_PORT"/>
+        <service name="PD"/>
+        <service name="RM"/>
+        <service name="CPU"/>
+        <service name="LOG"/>
+    </parent-provides>
+
+    <default-route>
+        <any-service> <parent/> <any-child/> </any-service>
+    </default-route>
+    <default caps="100"/>
+
+    <start name="timer">
+        <resource name="RAM" quantum="1M"/>
+        <provides> <service name="Timer"/> </provides>
+    </start>
+
+    <start name="rtc_drv" priority="-1">
+        <resource name="RAM" quantum="1M"/>
+        <provides><service name="Rtc"/></provides>
+    </start>
+
+    <start name="rtc_drv" priority="-1">
+        <resource name="RAM" quantum="1M"/>
+        <provides><service name="Rtc"/></provides>
+    </start>
+
+    <start name="test-rtc" priority="-1">
+        <resource name="RAM" quantum="1M"/>
+    </start>
+</config>
 		\end{lstlisting}
 		
 		The solution is to remove the default route.
@@ -1348,35 +1451,35 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 			commentstyle=\color[rgb]{0.133,0.545,0.133},
 			stringstyle=\color[rgb]{0.627,0.126,0.941}}
 		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-		<config>
-		<parent-provides>
-		<service name="ROM"/>
-		<service name="IRQ"/>
-		<service name="IO\_MEM"/>
-		<service name="IO\_PORT"/>
-		<service name="PD"/>
-		<service name="RM"/>
-		<service name="CPU"/>
-		<service name="LOG"/>
-		</parent-provides>
-		<default-route>
-		</default-route>
-		<default caps="100"/>
-		
-		<start name="rtc\_drv">
-		<resource name="RAM" quantum="1M"/>
-		<provides>
-		<service name="Rtc"/>
-		</provides>
-		<route>
-		<service name="PD"><parent/></service>
-		<service name="CPU"><parent/></service>
-		<service name="LOG"><parent/></service>
-		<service name="ROM"><parent/></service>
-		<service name="IO\_PORT"><parent/></service>
-		</route>
-		</start>
-		</config>
+<config>
+    <parent-provides>
+        <service name="ROM"/>
+        <service name="IRQ"/>
+        <service name="IO\_MEM"/>
+        <service name="IO\_PORT"/>
+        <service name="PD"/>
+        <service name="RM"/>
+        <service name="CPU"/>
+        <service name="LOG"/>
+    </parent-provides>
+    <default-route>
+    </default-route>
+    <default caps="100"/>
+
+    <start name="rtc\_drv">
+        <resource name="RAM" quantum="1M"/>
+        <provides>
+            <service name="Rtc"/>
+        </provides>
+        <route>
+            <service name="PD"><parent/></service>
+            <service name="CPU"><parent/></service>
+            <service name="LOG"><parent/></service>
+            <service name="ROM"><parent/></service>
+            <service name="IO\_PORT"><parent/></service>
+        </route>
+    </start>
+</config>
 		\end{lstlisting}
 		
 		For the other sessions this needs to be done analogously.
@@ -1412,6 +1515,7 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 				fb\_drv       & x & x & x & & x & x &   &   \\ \hline
 				nic\_drv      & x &   &   & & x & x & x & x \\ \hline
 				audio\_drv    & x &   &   & & x & x & x & x \\ \hline
+				\rowcolor{LightGreen}
 				ps2\_drv      &   & x &   & & x &   &   & x 
 			\end{tabular}
 			\caption{Device driver resource requirements}
@@ -1467,6 +1571,11 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		Furthermore it hung at a point that never caused any problems in the virtual machine.
 		Due to the constrained debug methods on this platforms this issue was not further researched.
 		
+		The \texttt{ps2\_drv} was the only driver tested that uses interrupts.
+		It was chosen since it only requires the \texttt{platform\_drv} and I/O ports which both work reliably.
+		It was tested on Qemu with an input test that shows the pressed keys and mouse movements.
+		For both cases the expected results occurred.
+		
 		Table \ref{drivers} shows an overview over the results.
 		Drivers that worked without any problems are marked green while those that work conceptually but are unstable or cause faults are marked yellow.
 		All unmarked drivers have not yet been tested.
@@ -1489,11 +1598,8 @@ inline int lx_ioctl_iomem(int fd, unsigned long phys, Genode::size_t offset)
 		To be a usable solution for development and production the implementations in this concept need to reach a stable state.
 		The current workarounds, that create memory leaks, need to be replaced with proper fixes.
 		Also it needs to be tested further on real hardware and the issues that arose on the ThinkPad X260 require an investigation.
-		
-		To support the full range of drivers the \texttt{IRQ} session is required.
-		The concept of a blocking read has been described in section \ref{irq} and is already used in related work \citep{uio}.
-		Also the performance of this approach needs to be evaluated once more complex drivers are supported in base-linux.
-		This is important since interrupts are often time critical and require a low latency.
+		With the testing of more complex drivers performance gets more important.
+		Especially interrupts are often time critical and require a low latency.
 		
 		A further important point is the integration into Genodes build system.
 		While some of it has already been done it is still unfinished.
