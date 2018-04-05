@@ -19,7 +19,7 @@ fi
 
 echo Parsing objectdump ...
 cat $WORKDIR/$FILE.txt | \
-    grep ".*\.[chS]:[0-9]\+" | \
+    grep ".*\.[chS]\(c\?\|\(pp\)\?\):[0-9]\+" | \
     sed "s/\(.*\):[0-9]\+.*/\1/g" | \
     sort | \
     uniq | \
