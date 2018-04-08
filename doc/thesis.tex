@@ -14,9 +14,15 @@ DIV=11,
 \usepackage[numbers]{natbib}
 \usepackage{cite}
 
+\usepackage{tikz}
+\usepackage{pgfplots}
 \usepackage{color, colortbl}
 \definecolor{LightGreen}{rgb}{0.83, 0.91, 0.83}
 \definecolor{LightYellow}{rgb}{1.0, 0.95, 0.8}
+\definecolor{LightRed}{HTML}{F8CECC}
+
+\definecolor{findOptimalPartition}{HTML}{D7191C}
+\definecolor{storeClusterComponent}{HTML}{FDAE61}
 
 \input{genode-manual/manual/img/tikz-preamble.tex}
 \input{genode-manual/manual/img/tikz-common.tex}
@@ -1579,6 +1585,50 @@ inline int lx_ioctl_irq(int fd, int irq)
 		Table \ref{drivers} shows an overview over the results.
 		Drivers that worked without any problems are marked green while those that work conceptually but are unstable or cause faults are marked yellow.
 		All unmarked drivers have not yet been tested.
+		
+		\section{Trusted code base}
+		
+		\begin{figure}
+			\centering
+			\begin{tikzpicture}
+			\begin{axis}[
+			ybar stacked,
+			legend style={
+				legend columns=4,
+				at={(xticklabel cs:0.5)},
+				anchor=north,
+				draw=none
+			},
+			xtick=data,
+			axis y line*=none,
+			axis x line*=bottom,
+			tick label style={font=\footnotesize},
+			legend style={font=\footnotesize},
+			label style={font=\footnotesize},
+			ytick={0, 25000, 50000, 75000, 100000,
+				150000, 200000, 300000, 400000},
+			width=.85\textwidth,
+			bar width=6mm,
+			ylabel={Source lines of code},
+			xticklabels={NOVA, hw, seL4, Fiasco.OC, Linux},
+			ymin=0,
+			ymax=400000,
+			area legend,
+			x=16mm,
+			scaled y ticks=false,
+			y tick label style={/pgf/number format/fixed, /pgf/number format/1000 sep = \thinspace},
+			ylabel near ticks
+			]
+			\addplot[findOptimalPartition,fill=findOptimalPartition] coordinates
+			{(0,10944) (1,0) (2, 16485) (3, 70210) (4, 309189)};
+			\addplot[storeClusterComponent,fill=storeClusterComponent] coordinates
+			{(0,27227) (1,28288) (2, 26807) (3, 27520) (4, 28300)};
+			\legend{Kernel, Base}
+			\end{axis}  
+			\end{tikzpicture}
+			\caption{Trusted computing bases}
+			\label{fig:tcb}
+		\end{figure}
 	
 	\chapter{Conclusion}
 	
