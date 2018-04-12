@@ -1,6 +1,6 @@
 #!/bin/sh
 
-echo Generating hash of $1 ...
+echo Generating hash ...
 HASH=$(md5sum $@ | cut -d" " -f1 | sort | uniq | md5sum | cut -d " " -f1)
 WORKDIR=/tmp/$HASH
 mkdir -p $WORKDIR
@@ -23,7 +23,7 @@ do
 
     echo Parsing objectdump ...
     cat $WORKDIR/$FILE.txt | \
-        grep ".*\.[chS]\(c\?\|\(pp\)\?\):[0-9]\+" | \
+        grep "^/.*:[0-9]\+" | \
         sed "s/\(.*\):[0-9]\+.*/\1/g" | \
         sort | \
         uniq | \
@@ -33,5 +33,5 @@ do
 
 done
 
-mkdir $WORKDIR/slocdata
+mkdir -p $WORKDIR/slocdata
 sloccount --datadir $WORKDIR/slocdata $WORKDIR/src
