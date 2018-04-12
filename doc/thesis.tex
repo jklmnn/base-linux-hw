@@ -1610,7 +1610,7 @@ inline int lx_ioctl_irq(int fd, int irq)
 			width=.85\textwidth,
 			bar width=6mm,
 			ylabel={Source lines of code},
-			xticklabels={NOVA, hw, seL4, Fiasco.OC, Linux},
+			xticklabels={hw, NOVA, seL4, Fiasco.OC, Linux},
 			ymin=0,
 			ymax=400000,
 			area legend,
@@ -1620,9 +1620,9 @@ inline int lx_ioctl_irq(int fd, int irq)
 			ylabel near ticks
 			]
 			\addplot[findOptimalPartition,fill=findOptimalPartition] coordinates
-			{(0,10944) (1,0) (2, 16485) (3, 70210) (4, 309189)};
+			{(0,0) (1,10944) (2, 16485) (3, 70210) (4, 295741)};
 			\addplot[storeClusterComponent,fill=storeClusterComponent] coordinates
-			{(0,27227) (1,28288) (2, 26807) (3, 27520) (4, 28300)};
+			{(0,28288) (1,27227) (2, 26807) (3, 27520) (4, 28300)};
 			\legend{Kernel, Base}
 			\end{axis}  
 			\end{tikzpicture}
