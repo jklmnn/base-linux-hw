@@ -383,6 +383,17 @@ DIV=11,
 		This mechanism is usually used for devices that wait for events such as keyboards.
 		Instead of checking periodically if a key has been pressed it registers an interrupt that is triggered once a key is pressed.
 		Then the driver can check which key has been pressed and pass this information to the operating system.
+		
+		\subsection{Direct Memory Access}
+		
+		Devices like graphics cards or hard disks need high bandwidth connections to the operating system.
+		To support this needs a mechanism called Direct Memory Access (DMA) is used.
+		It has a high throughput and low latency since it bypasses the CPU.
+		This also comes with a low CPU utilization. \citep{dma}
+		
+		To transfer data the driver must first allocate a DMA suited buffer.
+		This needs to be contiguous in physical memory since the transfer from the devices point of view happens with physical addresses.
+		This address is passed to the device which then accesses the same physical memory. Since both the driver and the device work on the same memory a high data bandwidth is achieved. \citep{books/daglib/0012446}
 	
 	\chapter{Related work}
 		
