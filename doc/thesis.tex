@@ -730,6 +730,28 @@ DIV=11,
 		This solution implements interrupts on Linux without polling and therefore should gain a feasible latency.
 		It also keeps the correct semantics of the implementation in Genode and should not require any workarounds.
 		
+		\section{Direct Memory Access}
+		
+		On Genode DMA is provided by the protection domain (\texttt{PD}).
+		It can allocate \texttt{RAM} dataspaces that can be used for DMA transactions.
+		This requires them to be contiguous \citep{genode}.
+		
+		In the current implementation of \texttt{base-linux} the RAM dataspace is provided by creating a local file and mapping it into the components address range.
+		While this is sufficient for regular applications it cannot be used for DMA.
+		Since the virtual address is the mapping of a file outside the kernel the physical address that is required for the DMA device cannot be acquired.
+		
+		To solve this issue the memory needs to be allocated inside the kernel.
+		This can be done via a special character device similarly to the design of section \ref{hwio}.
+		But instead of providing a physical range only the required size is given.
+		Inside the kernel the function \texttt{dma\_alloc\_coherent} provides a facility to map contiguous memory into the kernel space.
+		The implementation of \texttt{mmap} is also straight forward and consists of \texttt{dm\_mmap\_coherent} which is already available in the kernel and provides the correct mapping parameters. \citep{books/daglib/0012446}
+		
+		On the Genode side the character device transparently replaces the local file.
+		It is opened and configured via a \texttt{ioctl} and the resulting file descriptor is used to map the memory for the \texttt{RAM} dataspace.
+		
+		The physical DMA address is provided by the \texttt{dma\_alloc\_coherent} call and can be forwarded to the user space by either a further \texttt{ioctl} or a custom implementation of \texttt{read}.
+		Any further configuration of the DMA is then done in user space by the \texttt{platform\_drv}.
+		
 		\section{Integration into Genode}
 		
 		These concepts need to be integrated into Genodes source tree.
