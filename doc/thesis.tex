@@ -1660,7 +1660,7 @@ inline int lx_ioctl_irq(int fd, int irq)
 			label style={font=\footnotesize},
 			ytick={0, 25000, 50000, 75000, 100000,
 				150000, 200000, 300000, 400000},
-			width=.85\textwidth,
+			width=.76\textwidth,
 			bar width=6mm,
 			ylabel={Source lines of code},
 			xticklabels={hw, NOVA, seL4, Fiasco.OC, Linux},
@@ -1683,7 +1683,10 @@ inline int lx_ioctl_irq(int fd, int irq)
 			\label{fig:tcb}
 		\end{figure}
 	
-		
+		As the comparison shows Linux is with around 300000 lines of code still nearly four times as big as Fiasco.OC which is by far the largest microkernel.
+		The core binary and dynamic linker have similar sizes around 27000 lines of code.
+		A special case is Genodes own hw kernel which directly accesses the hardware without any further underlying kernel.
+		Since any interfacing code could be omitted and large parts of the code could be reused it is even smaller than the interfacing part for Linux only, although only by twelve lines of code.
 	
 	\chapter{Conclusion}
 	
