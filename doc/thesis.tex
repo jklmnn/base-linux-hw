@@ -1619,7 +1619,27 @@ inline int lx_ioctl_irq(int fd, int irq)
 		Drivers that worked without any problems are marked green while those that work conceptually but are unstable or cause faults are marked yellow.
 		All unmarked drivers have not yet been tested.
 		
-		\section{Trusted code base}
+		\section{Trusted computing base}
+		
+		An important security aspect of component based systems is their trusted computing base (TCB).
+		While on hierarchical systems as Genode the TCB is application specific some parts as the kernel are inherited by each component.
+		Therefore the TCB of the kernel is important to any component based system.
+		Furthermore each configuration requires its own interfacing with the kernel which adds up to the code size.
+		
+		While Linux was never intended as a microkernel there have been approaches to reduce its size and functionality to a minimum.
+		This has mostly been done with embedded systems in mind which only possess very limited resources.
+		A starting point to achieve this is the Linux Kernel Tinification project and the \texttt{tinyconfig} make target of the Linux kernel itself. \citep{tiny}.
+		Starting from this some features such as futexes and unix socket based networking are required to run Genode on this kernel.
+		
+		To create a comparison between Linux and different micro kernels their lines of code have been counted.
+		While the complete Linux kernel source code consists of multiple million lines only a portion of them is compiled into the resulting image.
+		To measure the actual used lines of code the kernel image is transformed into a text format with \texttt{objdump}\citep{objdump} which includes references to all used source files.
+		These are extracted, copied into a separate directory and counted by \texttt{sloccount}\citep{sloccount}.
+		
+		Since this mechanism can be applied to all different kernels and all core binaries it allows a fair comparison.
+		For each setup the kernel and its required binaries as well as Genodes kernel specific core and dynamic linker have been counted.
+		To prevent double counting of reused files the kernel and core binaries have been counted all together.
+		The results of this research are shown in figure \ref{fig:tcb}.
 		
 		\begin{figure}
 			\centering
@@ -1659,9 +1679,11 @@ inline int lx_ioctl_irq(int fd, int irq)
 			\legend{Kernel, Base}
 			\end{axis}  
 			\end{tikzpicture}
-			\caption{Trusted computing bases}
+			\caption{Trusted computing bases \citep{sloccount}}
 			\label{fig:tcb}
 		\end{figure}
+	
+		
 	
 	\chapter{Conclusion}
 	
