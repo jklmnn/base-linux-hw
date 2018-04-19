@@ -14,7 +14,7 @@ set build_components {
 	app/nit_focus
 	server/liquid_framebuffer app/launchpad app/scout
 	test/nitpicker server/nitlog
-        drivers/framebuffer drivers/input drivers/platform
+        drivers/framebuffer drivers/input drivers/platform drivers/platform-legacy
 	server/report_rom server/rom_filter
         lib/initramfs
 }
@@ -56,7 +56,7 @@ append config {
 		<provides><service name="Input"/></provides>
 	</start>
 
-        <start name="platform_drv"  caps="800">
+        <start name="platform_drv-legacy"  caps="800">
             <resource name="RAM" quantum="4M" constrain_phys="yes"/>
             <provides>
                 <service name="Platform"/>
@@ -264,7 +264,7 @@ set boot_modules {
 	nitpicker pointer status_bar report_rom rom_filter global_keys_handler
 	nit_focus
 	liquid_fb launchpad scout testnit nitlog
-        fb_boot_drv ps2_drv platform_drv
+        fb_boot_drv ps2_drv platform_drv-legacy
         initramfs
 	launchpad.config
 }
