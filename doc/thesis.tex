@@ -157,21 +157,12 @@ DIV=11,
 		In this context micro hypervisors such as NOVA \citep{Steinberg:2010:NMS:1755913.1755935} are used.
 		These are specialized microkernels that make use of the virtualisation technologies available on many platforms to run multiple systems isolated from each other. \citep{ibmvirt}
 		
-		As a general requirement a microkernel should only functionality that would be infeasible to implement outside the kernel.
-		It also has to separate and protect applications from itself and each other.
-		Any component that runs on a microkernel must not be influenced by any other. And if two components communicate between each other the communication must be secure in regards of confidentiality and integrity.
-		
-		To fulfil these requirements a microkernel based system consists of tasks that run in the user space.
-		As shown in figure \ref{microkernel} they are isolated from each other but can communicate via IPC with each other and the kernel.
-		Each task owns an address space which only itself can access.
-		Since they cannot influence each other the goal of isolation is satisfied.
-		Any communication between them is done via IPC or well defined shared memory regions.
-		
-		A task is a process that is characterized through its own state including its address space, stack pointer and instruction pointer.
-		Any changes the thread applies to its address space are controlled by the kernel.
-		Yet it is able to create a child that can inherit parts of its resources.
-		The parent looses access to anything it grants to the child regains it once the it is terminated.
-		Since the child itself can spawn new children a tree like structure can emerge.
+		As a general requirement a microkernel should only contain functionality that would be infeasible to implement outside the kernel.
+		It also has to separate and protect applications from each other.
+		Any component that runs on a microkernel must not be influenced by any other.
+		Components on micro kernels cannot communicate with each other by default.
+		They do so only if a policy that is enforced by the kernel allows them to.
+		If two components communicate between each other the communication must be secure in regards of confidentiality and integrity.
 		
 		Address spaces are mappings from physical to virtual memory pages.
 		The kernel takes a page of physical memory and assigns it to a task.
@@ -179,8 +170,20 @@ DIV=11,
 		Figure \ref{mapping} shows that each task only can see its virtual addresses and does know neither which physical memory it possesses nor where other tasks are located.
 		The assignment and management of these mappings is done by the kernel.
 		
+		A task is a process that is characterized through its own state including its address space, stack pointer and instruction pointer.
+		While the thread can read and write the memory any modification of its address space is controlled by the kernel.
+		Yet it is able to create a child that can inherit parts of its resources.
+		The parent looses access to anything it grants to the child regains it once the it is terminated.
+		Since the child itself can spawn new children a tree like structure can emerge.
+		
+		Only the kernel is allowed to set up address spaces.
+		It also creates tasks which own distinct address spaces.
+		They are isolated from each other.
+		Any communication that needs to be done only uses well defined interfaces such as IPC or shared memory.
+		All these mechanisms are controlled by the kernel which thereby provides isolation between components.
+		This architecture is shown in figure \ref{microkernel}.
+		
 		If a task spawns a child it passes a part of its own resources to the child.
-		It also looses access to this memory.
 		In figure \ref{mapping} the first task spawns a child which gets the parents second half of the memory.
 		The child itself cannot conclude from this to the physical or its parents memory location and size.
 		If the parent wants to keep the space it has passed to its child, for example to employ shared memory, it can map it to the child.
@@ -249,8 +252,8 @@ DIV=11,
 		These components are small blocks that can create complex systems without unnecessarily increasing the trusted computing base.
 		Beside being programs they can also provide other functionalities such as device drivers or protocol stacks.
 		
-		Genode supports multiple CPU architectures such as Intel i386 and ARM.
-		Multiple microkernels such as NOVA and seL4 can be used.
+		Genode supports multiple CPU architectures such as Intel x86 and ARM.
+		Multiple microkernels such as NOVA, seL4, Fiasco.OC and Genodes own hw kernel can be used.
 		Additionally Genode provides a custom kernel implementation that in comparison to other kernels further reduces the trusted computing base.
 		The current framework also provides many usable driver and application components.
 		Beside common periphery drivers such as USB and Intel wireless this also includes complex application frameworks such as Qt5. \citep{genode}
@@ -262,14 +265,15 @@ DIV=11,
 		
 		Some of Genodes properties are important for the evaluation of this thesis and will be explained further.
 		One is the source code management which is based on so called repositories that can include multiple sets of software components.
-		The other is the session concept which implements the IPC mechanism and also provides abstractions to platform specific code.
+		The other is the session concept which provide typed interfaces between components and abstractions to platform specific code.
 		
 		\subsection{Components}
 		
 		Genode based systems are based on components.
 		These can be drivers, services, applications.
-		Their public interface to other components is defined by the sessions they require and provide.
-		Beside these sessions they are isolated from each other.
+		They own public typed interfaces that allow them to communicate in a well defined way with each other.
+		Each component can provide and require different interface types.
+		Aside from that they are isolated from each other.
 		Components do not have any information about their communication partners but only about the type of the sessions they use.
 		This type information is provided by a capability that a component needs to use it.
 		Due to this property the can be replaced transparently by other components providing or using the same sessions. \citep{genode}
@@ -277,7 +281,7 @@ DIV=11,
 		A graphical application for example requires a framebuffer session to draw its user interface.
 		The framebuffer session itself can be provided by a display driver.
 		The only information the application has are width height and color mode of the framebuffer.
-		Yet it cannot conclude what is providing it.
+		Yet it cannot conclude which component is providing it.
 		If the system is moved to another hardware that requires a different display driver.
 		The display driver component can be replaced with another one without affecting the application using the framebuffer session \citep{genode}.
 		Also there is no restriction in the implementation of a session.
@@ -297,6 +301,11 @@ DIV=11,
 		The core sessions include basic resources such as protection domains, RAM and CPU.
 		More important for this thesis they also provide hardware access abstractions for I/O memory, I/O ports and interrupts.
 		Since logging is an important part of every system it is also included here.
+		
+		As a specific setup can have multiple components that provide the same session types a routing needs to be done explicitly.
+		Otherwise it would not be possible to create unambiguous connections between components.
+		This is done by the \texttt{config} which is an XML document that describes which component provides and uses what session.
+		It also defines routes that create explicit connections between session clients and session providers.
 		
 		All of them are initially provided by the core component.
 		As the implementation of this group is often not or hardly portable each platform requires its own adaptions.
@@ -378,7 +387,14 @@ DIV=11,
 		When an interrupt occurs the execution of the current task is interrupted by the CPU and a handler procedure is called.
 		The handler is registered to one of the 18 predefined or 224 user defined interrupts.
 		When it is called the only information available is that one of the interrupts it was registered to has been triggered.
-		Any further information needs to be acquired through other channels, for example memory mapped IO. \citep{intelmanual}
+		Any further information needs to be acquired through other channels, for example memory mapped IO.
+		\citep{intelmanual}
+		
+		To prevent the interrupt handler itself from being interrupted the CPU masks the triggered interrupt while the handler is executed.
+		To unmask it again the handler needs to acknowledge it.
+		In some cases the CPU must not be interrupted even though it is not inside an interrupt handler.
+		For this case interrupts can be disabled and enabled.
+		This is controlled by the \texttt{sti} and \texttt{cli} assembler instructions \citep{intelmanual}.
 		
 		This mechanism is usually used for devices that wait for events such as keyboards.
 		Instead of checking periodically if a key has been pressed it registers an interrupt that is triggered once a key is pressed.
@@ -393,7 +409,7 @@ DIV=11,
 		
 		To transfer data the driver must first allocate a DMA suited buffer.
 		This needs to be contiguous in physical memory since the transfer from the devices point of view happens with physical addresses.
-		This address is passed to the device which then accesses the same physical memory. Since both the driver and the device work on the same memory a high data bandwidth is achieved. \citep{books/daglib/0012446}
+		This address is passed to the device which then accesses the same physical memory. \citep{books/daglib/0012446}
 	
 	\chapter{Related work}
 		
@@ -547,8 +563,8 @@ DIV=11,
 			\item \label{req:boot} Boot Genode on a bare  Linux kernel without any further userland.
 			No further user processes such as bash should be required beside Genode.
 			\item \label{req:drivers} Already available drivers on Genode should be usable without any modifications.
-			Furthermore the kernel should support all drivers without the need to be modified itself, too.
-			\item \label{req:modules} Developed kernel modules should be able to be built directly in the kernel source and as a loadable module.
+			Furthermore the Linux kernel should support all drivers without the need of additional driver specific code.
+			\item \label{req:modules} Developed Linux kernel modules should be able to be built directly in the kernel source and as a loadable module.
 			This is required to support kernels without module support while also being able to debug the module more easily.
 		\end{enumerate}
 		
@@ -556,8 +572,9 @@ DIV=11,
 		
 		\begin{enumerate}
 			\item \label{req:complexity} Keep the Linux kernel complexity as low as possible.
-			This includes dependencies introduces by functional requirements.
+			This includes dependencies introduced by functional requirements.
 			\item \label{req:integration} Integrate the implementation into Genode in a way to be able to configure if Genode should run directly on the host system or on a bare Linux kernel on Qemu.
+			\item \label{req:size} The Linux kernel should be as small as possible in regards of code size to reduce its complexity.
 		\end{enumerate}
 		
 		\subsection{Security}
@@ -565,9 +582,7 @@ DIV=11,
 		\begin{enumerate}
 			\item \label{req:isolation} Keep Genodes component isolation intact.
 			Processes should not be able to influence each other and communicate only in ways provided by Genode.
-			\item \label{req:traps} Configurable objects such as file descriptors that are created in core and passed to other components should have a trapping configuration.
-			This means that they cannot be altered any more after being configured the first time.
-			Otherwise components would be able to escalade their privileges and violate restrictions set on them by core.
+			\item \label{req:traps} Restrictions on resources set by the core component should not be revocable by the components using these resources.
 			
 		\end{enumerate}
 	
@@ -604,7 +619,7 @@ DIV=11,
 		A component would access these ports through the session interface which also regulates the port ranges.
 		The instantiation of a \texttt{IO\_PORT} session is the first point where the required port range is known.
 		Since this does not run in the same process that executes the actual I/O accesses acquiring the needed privilege level at this point would be without effect.
-		As the privilege needs to be acquired before the needed range is known \texttt{iopl} is the only feasible option.
+		As the privilege needs to be acquired before the needed range is known \texttt{iopl} is the only feasible option and is used for the final implementation.
 		
 		\section{Memory mapped IO}
 		
@@ -614,18 +629,16 @@ DIV=11,
 		\subsection{Memory device}
 		
 		The easiest would be using \texttt{/dev/mem} which already has mapped all physical memory into the user space.
+		This is a special character device that can be used by a user space program to map a physical range of memory into its address space \citep{devmem}.
 		While on early kernel versions it was possible to access the whole memory current versions have the \texttt{CONFIG\_STRICT\_DEVMEM} configuration option enabled which only allows access to IO memory but not arbitrary RAM.
-		
-		While memory mapped IO is much more important that IO ports Linux does not provide a well defined interface to use it from the user space.
-		There is already a mechanism to access physical memory ranges from the user space on Linux, \texttt{/dev/mem}.
-		This is a special character device that can be used by a user space program to map a physical range of memory into its address space. \citep{devmem}
+		Whereas memory mapped IO is much more important that IO ports Linux does not provide a well defined interface to use it from the user space.
 		
 		Any process that is able to open that device and map its memory can access all the available ranges and not only what it is supposed to.
 		This means that for example a display driver that should only have access to its framebuffer memory can also access the ranges used by the network or audio driver.
+		Not only drivers but also the kernels own controls structures and memory page tables are affected by this.
 		This violates the security requirement \ref{req:isolation} which states that components must be isolated from each other.
 		In newer kernels this only applies to I/O memory and not main memory.
-		Yet it still does violate isolation since drivers can interfere with each other via I/O memory, too.
-		In earlier versions it was even possible to access the whole available memory, even that of the kernel and other processes. \citep{devmem}
+		Yet it still does violate isolation since drivers can interfere with each other via I/O memory, too. \citep{devmem}
 		
 		While this would be sufficient to satisfy the functional requirement \ref{req:drivers} it lacks a more fine grained access control.
 		To satisfy this requirement the access to memory regions needs to be constrained yet this is not possible in this case.
@@ -642,25 +655,24 @@ DIV=11,
 		This does not only require the the kernel to be compiled for each device but also a manual upgrade each time a new version is released.
 		Also a syscall number needs to be chosen that does not collide with any existing one.
 		While this sounds easy in the first place it either requires the number registrated by kernel developers to prevent collisions or to reassign it in future versions.
-		So beside this being a powerful way to enable user space memory mapping it also requires a higher maintenance over time. \citep{syscall}
+		So beside this being a powerful way to enable user space memory mapping it also requires a higher maintenance over time.
+		Also this solution violates functional requirement \ref{req:modules} since system call cannot be introduces by loadable Linux kernel modules. \citep{syscall}
 		
 		\subsection{SysFS}
 		
 		The Linux \texttt{sysfs} which is located in \texttt{/sys} is a common way to enable communication between user space applications and the kernel.
 		This is usually done by accessing files in \texttt{/sys}.
 		An implementation of such a driver would provide a file that the arguments are placed into; for example the space separated name, offset and size of the regarded memory region.
-		It would then place an correspondingly named device file into ts directory that the user space process can open and map. \citep{sysfs}
+		It would then place an correspondingly named device file into its directory that the user space process can open and map. \citep{sysfs}
 		
 		As this enables the driver to selectively make memory regions accessible, even to specific users only, this would fit Genodes security model.
 		Core would be responsible to set the correct arguments into the input file and the component could open and map the file according to its capabilities.
 		
 		Yet there are some disadvantages, especially in regards to complexity.
-		Mapping a memory region would need multiple file operations.
-		Also the direct access to files in \texttt{/sys} is disregarded since the structure of the file system can change.
-		To prevent effects of these changes it is recommended to use an abstraction layer such a udev or HAL.
+		Mapping a memory region by accessing \texttt{/sys} requires either to do multiply file operations or to use an abstraction layer such a udev or HAL.
 		These dependencies would furthermore increase the complexity of this approach.
 		Since Genodes base-linux does not depend yet on sysfs it could be removed from the kernel later.
-		That would not be true anymore if this approach was chosen. \citep{sysfs}
+		That would not be true anymore and violate non-functional requirement \ref{req:size} if this approach was chosen. \citep{sysfs}
 		
 		\subsection{Fcntl}
 		
@@ -692,14 +704,14 @@ DIV=11,
 		It also can be built as a kernel module which makes it loadable at run time. \citep{ioctl}
 		
 		This is the preferred solution since it eliminates the most of other solutions drawbacks.
-		It does only depend on \texttt{/dev} and with \texttt{devtmpfs} there is a low complexity driver available to populate it \citep{devtmpfs}.
+		It does only depend on \texttt{/dev} and with \texttt{devtmpfs} there is a low complexity driver available to populate it \citep{devtmpfs} and fulfil non-functional requirements \ref{req:size} amd \ref{req:complexity}.
 		The alternative option would be udev that is a user space daemon which dynamically adds and removes devices in \texttt{/dev} accordingly to the drivers that are loaded and the devices that are available \citep{udev}.
 		To be used in this scenario it needs to be fully included.
 		This would result in a large increase of complexity and unneeded functionality.
 		Also any other interfaces such as \texttt{procfs} \citep{procfs}, \texttt{sysfs} \citep{sysfs} shall be stripped from the kernel later to further reduce its complexity.
 		
 		Furthermore this approach is still flexible enough to implement the required restrictions discussed earlier in this section.
-		It also can be built as a kernel module or inside the kernel source tree.
+		It also can be built as a kernel module or inside the kernel source tree as required in.
 		This makes applicable to both kernels that cannot be changed on the device and kernels that do not have support for loadable modules as described in functional requirement \ref{req:modules}.
 		
 		\section{Interrupts}
@@ -716,18 +728,19 @@ DIV=11,
 		With this behaviour in mind the interrupt on Linux can be implemented as a blocking read on a special device file.
 		The generic way is similar to the one described in section \ref{hwio}.
 		A custom device is opened and the file descriptor is configured via \texttt{ioctl}.
-		The configuration would set the interrupt number that the handler should be tied to.
-		Inside the module it would register on the according interrupt of the Linux kernel.
+		The configuration sets the interrupt number that the handler should be tied to.
+		Inside the module it registers on the according interrupt of the Linux kernel.
 		
-		The interrupt thread in Genode would receive the configured file descriptor and call a read on it.
+		The interrupt thread in Genode receives the configured file descriptor and call a read on it.
 		The device has implemented the read in such a way that it will not return until the interrupt is triggered inside the kernel.
 		Once this happened the read would return and the handling can go on as defined in Genode.
 		
-		The masking of the interrupt is done by not calling read which.
+		The masking of the interrupt is done by not calling read.
 		This results in ignoring all hardware interrupt that occur in this time.
 		An acknowledgement by the handler calls read again and therefore unmasks the interrupt.
 		
-		This solution implements interrupts on Linux without polling and therefore should gain a feasible latency.
+		This solution implements interrupts on Linux without polling.
+		While the interrupt latency is not evaluated yet this approach is assumed to be better than polling.
 		It also keeps the correct semantics of the implementation in Genode and should not require any workarounds.
 		
 		\section{Direct Memory Access}
