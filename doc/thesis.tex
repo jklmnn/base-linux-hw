@@ -1327,14 +1327,146 @@ inline int lx_ioctl_irq(int fd, int irq)
 		The working state of Genodes device drivers is the evaluation metric that this thesis is measured against.
 		The first part of this is getting an overview over the existing drivers and categorize them by their required resources.
 		Based on the implemented resources and the functionality of different drivers the state of each resource can be determined.
+		As microkernels are not only defined by their functionality but also their size the Linux kernels complexity is evaluated and compared to other supported microkernels.
 		
 		\section{Resource requirements}
 		
-		The resource requirements drivers have do not refer to generic resources such as CPU time and RAM but to I/O that it available to communicate with hardware.
-		More specific these are I/O ports, I/O memory and interrupts.
-		In Genode they are represented by the \texttt{IO\_PORT}, \texttt{IO\_MEM} and \texttt{IRQ} sessions.
+		To test the driver functionality the resources required by drivers need to be assessed first.
+		For this task the relevant resources need to be selected and their influence on each driver must be evaluated.
 		
-		To verify and analyse the drivers a reference platform is required.
+		The resource requirements of drivers do not refer to generic resources such as CPU time and RAM but to I/O resources that enable it to communicate with hardware.
+		More specific these are I/O ports, I/O memory and interrupts.
+		In Genode these resources are represented by the \texttt{IO\_PORT}, \texttt{IO\_MEM} and \texttt{IRQ} sessions.
+		
+		Since testing all resources at once is not feasible and would yield imprecise results they need to be tested one by one.
+		To do this their resource dependencies needed to be analysed first.
+		These are defined as routes in Genode.
+		If they are not explicitly defined Genode applies default routes which are implicitly created from the components requirements.
+		
+		Listing \ref{implicitroutes} shows the default configuration of the \texttt{rtc\_drv} test which tests the real time clock driver.
+		As described above it only specifies a default route which is valid for all children of the parent.
+		This route, in line 14 to 16 specifies that any service can use the parent or any child to fulfil its requirements.
+		This does not help much as all actual required resources are invisible.
+		And even if they could be seen somehow this not reflect the minimally required resources.
+		Instead it would show the resources the driver uses in the best case which is not the goal.
+		
+		The solution is to remove the default route.
+		This obviously leads to the whole system breaking since no resources are available to anyone.
+		The minimal requirement can be achieved by manually adding routes one by one until the desired functionality is available.
+		
+		The result is listing \ref{explicitroutes} which is already much more verbose.
+		It is also stripped down a bit and only shows the parent and one driver.
+		The default route of the parent is empty now but the \texttt{rtc\_drv} now has its own section for routes.
+		It requires the \texttt{PD} (Protection Domain), \texttt{CPU}, \texttt{LOG} and \texttt{ROM} sessions which are all provided by the parent.
+		Those are required by any component running on Genode, no matter if it is a device driver or not.
+		
+		The more interesting part is the \texttt{IO\_PORT} session route which also points to the parent.
+		Since this is the only one other session its also the only other requirement as this component has no access to anything else.
+		The essence of this example is that the implementation of the \texttt{IO\_PORT} session on a new platform can be tested with this driver.
+		
+		\lstset{language=XMl,
+			caption={Implicit default routes},
+			label=implicitroutes,
+			breaklines=true,
+			numbers=left,
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+<config prio_levels="2" verbose="yes">
+		
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+	</parent-provides>
+		
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<default caps="100"/>
+		
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides> <service name="Timer"/> </provides>
+	</start>
+		
+	<start name="rtc_drv" priority="-1">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Rtc"/></provides>
+	</start>
+		
+	<start name="rtc_drv" priority="-1">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Rtc"/></provides>
+	</start>
+		
+	<start name="test-rtc" priority="-1">
+		<resource name="RAM" quantum="1M"/>
+	</start>
+</config>
+		\end{lstlisting}
+		
+		
+		
+		\lstset{language=XMl,
+			caption={Explicit routes},
+			label=explicitroutes,
+			breaklines=true,
+			numbers=left,
+			numberstyle=\footnotesize,
+			stepnumber=1,
+			keywordstyle=\color[rgb]{0,0,0},
+			commentstyle=\color[rgb]{0.133,0.545,0.133},
+			stringstyle=\color[rgb]{0.627,0.126,0.941}}
+		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="IRQ"/>
+		<service name="IO\_MEM"/>
+		<service name="IO\_PORT"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+	</parent-provides>
+	<default-route>
+	</default-route>
+	<default caps="100"/>
+		
+	<start name="rtc\_drv">
+		<resource name="RAM" quantum="1M"/>
+		<provides>
+			<service name="Rtc"/>
+		</provides>
+		<route>
+			<service name="PD"><parent/></service>
+			<service name="CPU"><parent/></service>
+			<service name="LOG"><parent/></service>
+			<service name="ROM"><parent/></service>
+			<service name="IO\_PORT"><parent/></service>
+		</route>
+	</start>
+</config>
+		\end{lstlisting}
+		
+		For the other sessions this needs to be done analogously.
+		While the example was straight forward this does not necessarily hold for the others.
+		The \texttt{IO\_MEM} session also can be tested solely with a single driver, the \texttt{fb\_boot\_drv} in this case. But the IRQ is only used in combination with other sessions.
+		
+		Testing all resources requires not only hardware but also drivers that access it.
+		To test a single resource an according driver that only depends on this one is required.
+		This leads to the next step to analyse the resources a driver needs to function and to categorize these.
+		
+		For this task a reference platform is required.
 		To fulfil this a Lenovo ThinkPad X260 was chosen.
 		This was done due to the fact that most of the internal devices are supported by drivers available on Genode.
 		On the other hand this choice limits the driver selection to the Intel x86 architecture.
@@ -1398,183 +1530,13 @@ inline int lx_ioctl_irq(int fd, int irq)
 		This implies that such a driver additionally requires the resources the platform driver itself needs to work.
 		To properly display this the platform driver will be listed as a resource by itself and it will be marked which session was requested.
 		
+		The platform driver is also responsible to configure DMA mappings for drivers.
+		Since DMA is not implemented as a session on Genode it was not evaluated in the previous part of this section.
+		
 		Another exemption from the conventional resources is the timer.
 		While it is not hardware dependent it relies on the underlying kernel.
-		Even though it was already available on Linux it is needed to enable this platform and is listed here for completeness.
+		Even though it was already available on Linux it is needed to enable this platform and is listed here for completeness. 
 		
-		%%% requirement analysis
-		
-		Since testing all resources at once is not feasible and would yield imprecise results they need to be tested one by one.
-		To do this their resource dependencies needed to be analysed first.
-		The requirement analysis of was done by creating scenarios with explicit routes only.
-		The configurations were reduced to the point that taking away any of these resources would make the driver fail.
-		
-		As discussed in section \ref{sessions} Genode provides so called sessions as resource and communication interface.
-		According to the required resources the sessions \texttt{IO\_PORT}, \texttt{IO\_PORT} and \texttt{IRQ} are provided.
-		Testing them requires not only hardware but also drivers that access it.
-		To test a single resource an according driver that only depends on this one is required.
-		This leads to the next step to analyse the resources a driver needs to function and to categorize these.
-		
-		In Genode sessions and therefore resources are managed by routes.
-		These can be set either implicitly or explicitly.
-		The former is used in nearly every configuration that is already available.
-		This is often done by setting a generic default route in the parent that would allow any interaction and was inherited by its children.
-		Exceptions from this were only settings that otherwise would have been ambiguous.
-		
-		Listing \ref{implicitroutes} shows the default configuration of the \texttt{rtc\_drv} test which tests the real time clock driver.
-		As described above it only specifies a default route which is valid for all children of the parent.
-		This route, in line 14 to 16 specifies that any service can use the parent or any child to fulfil its requirements.
-		This does not help much as all actual required resources are invisible.
-		And even if they could be seen somehow this not reflect the minimally required resources.
-		Instead it would show the resources the driver uses in the best case which is not the goal.
-		
-		\lstset{language=XMl,
-			caption={Implicit default routes},
-			label=implicitroutes,
-			breaklines=true,
-			numbers=left,
-			numberstyle=\footnotesize,
-			stepnumber=1,
-			keywordstyle=\color[rgb]{0,0,0},
-			commentstyle=\color[rgb]{0.133,0.545,0.133},
-			stringstyle=\color[rgb]{0.627,0.126,0.941}}
-		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-<config prio_levels="2" verbose="yes">
-
-    <parent-provides>
-        <service name="ROM"/>
-        <service name="IRQ"/>
-        <service name="IO_MEM"/>
-        <service name="IO_PORT"/>
-        <service name="PD"/>
-        <service name="RM"/>
-        <service name="CPU"/>
-        <service name="LOG"/>
-    </parent-provides>
-
-    <default-route>
-        <any-service> <parent/> <any-child/> </any-service>
-    </default-route>
-    <default caps="100"/>
-
-    <start name="timer">
-        <resource name="RAM" quantum="1M"/>
-        <provides> <service name="Timer"/> </provides>
-    </start>
-
-    <start name="rtc_drv" priority="-1">
-        <resource name="RAM" quantum="1M"/>
-        <provides><service name="Rtc"/></provides>
-    </start>
-
-    <start name="rtc_drv" priority="-1">
-        <resource name="RAM" quantum="1M"/>
-        <provides><service name="Rtc"/></provides>
-    </start>
-
-    <start name="test-rtc" priority="-1">
-        <resource name="RAM" quantum="1M"/>
-    </start>
-</config>
-		\end{lstlisting}
-		
-		The solution is to remove the default route.
-		This obviously leads to the whole system breaking since no resources are available to anyone.
-		The minimal requirement can be achieved by manually adding routes one by one until the desired functionality is available.
-		
-		The result is listing \ref{explicitroutes} which is already much more verbose.
-		It is also stripped down a bit and only shows the parent and one driver.
-		The default route of the parent is empty now but the \texttt{rtc\_drv} now has its own section for routes.
-		It requires the \texttt{PD} (Protection Domain), \texttt{CPU}, \texttt{LOG} and \texttt{ROM} sessions which are all provided by the parent.
-		Those are required by any component running on Genode, no matter if it is a device driver or not.
-		
-		The more interesting part is the \texttt{IO\_PORT} session route which also points to the parent.
-		Since this is the only one other session its also the only other requirement as this component has no access to anything else.
-		The essence of this example is that the implementation of the \texttt{IO\_PORT} session on a new platform can be tested with this driver.
-		
-		\lstset{language=XMl,
-			caption={Explicit routes},
-			label=explicitroutes,
-			breaklines=true,
-			numbers=left,
-			numberstyle=\footnotesize,
-			stepnumber=1,
-			keywordstyle=\color[rgb]{0,0,0},
-			commentstyle=\color[rgb]{0.133,0.545,0.133},
-			stringstyle=\color[rgb]{0.627,0.126,0.941}}
-		\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-<config>
-    <parent-provides>
-        <service name="ROM"/>
-        <service name="IRQ"/>
-        <service name="IO\_MEM"/>
-        <service name="IO\_PORT"/>
-        <service name="PD"/>
-        <service name="RM"/>
-        <service name="CPU"/>
-        <service name="LOG"/>
-    </parent-provides>
-    <default-route>
-    </default-route>
-    <default caps="100"/>
-
-    <start name="rtc\_drv">
-        <resource name="RAM" quantum="1M"/>
-        <provides>
-            <service name="Rtc"/>
-        </provides>
-        <route>
-            <service name="PD"><parent/></service>
-            <service name="CPU"><parent/></service>
-            <service name="LOG"><parent/></service>
-            <service name="ROM"><parent/></service>
-            <service name="IO\_PORT"><parent/></service>
-        </route>
-    </start>
-</config>
-		\end{lstlisting}
-		
-		For the other sessions this needs to be done analogously.
-		While the example was straight forward this does not necessarily count for the others.
-		The \texttt{IO\_MEM} session also can be tested solely with a single driver, the \texttt{fb\_boot\_drv} in this case. But the IRQ is only used in combination with other sessions. 
-		
-		%%%
-	
-		\begin{table}[]
-			\centering
-			\begin{tabular}{r|c|c|c|c|c|c|c|c}
-				& \rotatebox[]{90}{Timer}
-		& \rotatebox[]{90}{IO\_PORT}
-		& \rotatebox[]{90}{IO\_MEM}
-		& \rotatebox[]{90}{IRQ}
-		& \rotatebox[]{90}{Platform driver}
-		& \rotatebox[]{90}{IO\_PORT (Platform)}
-		& \rotatebox[]{90}{IO\_MEM (Platform)}
-		& \rotatebox[]{90}{IRQ (Platform)} \\ \hline
-				
-				\rowcolor{LightGreen}
-				platform\_drv &   & x &   & &   &   &   &   \\ \hline
-				\rowcolor{LightYellow}
-				acpi\_drv     &   &   & x & &   &   &   &   \\ \hline
-				\rowcolor{LightGreen}
-				fb\_boot\_drv & x &   & x & &   &   &   &   \\ \hline
-				\rowcolor{LightGreen}
-				rtc\_drv      &   & x &   & &   &   &   &   \\ \hline
-				usb\_drv      & x &   &   & & x & x & x & x \\ \hline
-				intel\_fb     & x &   & x & & x & x & x & x \\ \hline
-				ahci\_drv     & x &   & x & & x & x & x & x \\ \hline
-				\rowcolor{LightYellow}
-				fb\_drv       & x & x & x & & x & x &   &   \\ \hline
-				nic\_drv      & x &   &   & & x & x & x & x \\ \hline
-				audio\_drv    & x &   &   & & x & x & x & x \\ \hline
-				\rowcolor{LightGreen}
-				ps2\_drv      &   & x &   & & x &   &   & x 
-			\end{tabular}
-			\caption{Device driver resource requirements}
-			\label{drivers}
-		\end{table}
-
-		This configuration has been created for each driver tested.
 		The results are visualized in table \ref{drivers}.
 		A note here is that all drivers using the platform driver also require the \texttt{IO\_PORT} session.
 		This has two reasons.
@@ -1582,10 +1544,46 @@ inline int lx_ioctl_irq(int fd, int irq)
 		One could argue that creating a independent version of a particular driver would change this.
 		Yet the assumption was to use unmodified drivers which would have been broken by any change to a driver itself.
 		Secondly since the driver is failing to function on the removal of this resource it is treated as a requirement.
+	
+		\begin{table}[]
+			\centering
+			\begin{tabular}{r|c|c|c|c|c|c|c|c|c}
+				& \rotatebox[]{90}{Timer}
+		& \rotatebox[]{90}{IO\_PORT}
+		& \rotatebox[]{90}{IO\_MEM}
+		& \rotatebox[]{90}{IRQ}
+		& \rotatebox[]{90}{Platform driver}
+		& \rotatebox[]{90}{IO\_PORT (Platform)}
+		& \rotatebox[]{90}{IO\_MEM (Platform)}
+		& \rotatebox[]{90}{IRQ (Platform)}
+		& \rotatebox[]{90}{DMA (Platform)}\\ \hline
+				
+				\rowcolor{LightGreen}
+				platform\_drv &   & x &   & &   &   &   &   &   \\ \hline
+				\rowcolor{LightYellow}
+				acpi\_drv     &   &   & x & &   &   &   &   &   \\ \hline
+				\rowcolor{LightGreen}
+				fb\_boot\_drv & x &   & x & &   &   &   &   &   \\ \hline
+				\rowcolor{LightGreen}
+				rtc\_drv      &   & x &   & &   &   &   &   &   \\ \hline
+				usb\_drv      & x &   &   & & x & x & x & x & x \\ \hline
+				intel\_fb     & x &   & x & & x & x & x & x & x \\ \hline
+				ahci\_drv     & x &   & x & & x & x & x & x & x \\ \hline
+				\rowcolor{LightYellow}
+				fb\_drv       & x & x & x & & x & x &   &   & x \\ \hline
+				nic\_drv      & x &   &   & & x & x & x & x & x \\ \hline
+				audio\_drv    & x &   &   & & x & x & x & x & x \\ \hline
+				\rowcolor{LightGreen}
+				ps2\_drv      &   & x &   & & x &   &   & x &
+			\end{tabular}
+			\caption{Device driver resource requirements}
+			\label{drivers}
+			\small From the tested drivers the working ones are highlighted green. The yellow ones started but crashed or stopped working due to yet unknown bugs.
+		\end{table}
 		
 		\section{Tested drivers}
 		
-		Since only I/O port and I/O memory support was actually implemented solely drivers that do not need interrupt have been tested.
+		Since DMA support was not implemented solely drivers that do not need it have been tested.
 		The tests of the remaining have been done in a Qemu virtual machine and on the Lenovo ThinkPad X260.
 		
 		The \texttt{IO\_PORT} session worked without any problems.
@@ -1608,7 +1606,7 @@ inline int lx_ioctl_irq(int fd, int irq)
 		\end{figure}		
 		
 		The \texttt{acpi\_drv} and \texttt{fb\_drv} were more difficult.
-		Both of them map and release different chunks pf physical memory.
+		Both of them map and release different chunks of physical memory.
 		The releasing regularly caused segmentation faults.
 		The exact cause could not be found but preventing the release by commenting out the specific part of the code caused the \texttt{acpi\_drv} to announce the correct information read from the ACPI tables.
 		While this comes with a somewhat broken state and memory leaks it shows that the conceptual design is working.
@@ -1628,7 +1626,7 @@ inline int lx_ioctl_irq(int fd, int irq)
 		It was tested on Qemu with an input test that shows the pressed keys and mouse movements.
 		For both cases the expected results occurred.
 		
-		Table \ref{drivers} shows an overview over the results.
+		Table \ref{drivers} shows an overview of the results.
 		Drivers that worked without any problems are marked green while those that work conceptually but are unstable or cause faults are marked yellow.
 		All unmarked drivers have not yet been tested.
 		
@@ -1706,7 +1704,7 @@ inline int lx_ioctl_irq(int fd, int irq)
 		This thesis shows that it is possible to create a generic interface on Linux to run drivers in the user space.
 		It also shows that this is possible to do this by using a component based user land, such as the Genode OS Framework \citep{genode}.
 		
-		Two basic hardware access mechanisms have been ported to Linux.
+		Three basic hardware access mechanisms have been ported to Linux.
 		The evaluation showed that even though the implementation is not yet stable the concepts are working.
 		It was possible to run unaltered Genode drivers on Linux and to create an interface that sufficiently generic to overcome the need of driver specific adaptions to the kernel.
 		
