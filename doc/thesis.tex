@@ -13,6 +13,7 @@ DIV=11,
 
 \usepackage[numbers]{natbib}
 \usepackage{cite}
+\usepackage[bottom]{footmisc}
 
 \usepackage{tikz}
 \usepackage{pgfplots}
@@ -1674,7 +1675,13 @@ inline int lx_ioctl_irq(int fd, int irq)
 			width=.76\textwidth,
 			bar width=6mm,
 			ylabel={Source lines of code},
-			xticklabels={hw, NOVA, seL4, Fiasco.OC, Linux},
+                        xticklabels={
+                            \rotatebox{270}{hw},
+                            \rotatebox{270}{NOVA},
+                            \rotatebox{270}{seL4},
+                            \rotatebox{270}{Fiasco.OC},
+                            \rotatebox{270}{Fiasco.OC JDB},
+                            \rotatebox{270}{Linux}},
 			ymin=0,
 			ymax=400000,
 			area legend,
@@ -1684,17 +1691,21 @@ inline int lx_ioctl_irq(int fd, int irq)
 			ylabel near ticks
 			]
 			\addplot[findOptimalPartition,fill=findOptimalPartition] coordinates
-			{(0,0) (1,10944) (2, 16485) (3, 70210) (4, 295741)};
+                        {(0,0) (1,10944) (2, 16485) (3, 41681) (4, 70210) (5, 295741)};
 			\addplot[storeClusterComponent,fill=storeClusterComponent] coordinates
-			{(0,28288) (1,27227) (2, 26807) (3, 27520) (4, 28300)};
+                        {(0,28288) (1,27227) (2, 26807) (3, 27848) (4, 27520) (5, 28300)};
 			\legend{Kernel, Base}
-			\end{axis}  
+			\end{axis}
 			\end{tikzpicture}
-			\caption{Trusted computing bases \citep{sloccount}}
+                        \caption{Trusted computing bases \citep{sloccount} (Fiasco.OC with and without JDB)}
 			\label{fig:tcb}
 		\end{figure}
 	
-		As the comparison shows Linux is with around 300000 lines of code still nearly four times as big as Fiasco.OC which is by far the largest microkernel.
+                As the comparison shows Linux is with around 300000 lines of code still nearly four times as big as Fiasco.OC
+                \footnote{Fiasco.OC has been measured with and without the JDB kernel debugger to keep the test as fair as possible.
+                Without JDB it did not generate any output while all other kernels did.
+                On the other hand JDB is a complex tool that adds many lines of code.}
+                which is by far the largest microkernel.
 		The core binary and dynamic linker have similar sizes around 27000 lines of code.
 		A special case is Genodes own hw kernel which directly accesses the hardware without any further underlying kernel.
 		Since any interfacing code could be omitted and large parts of the code could be reused it is even smaller than the interfacing part for Linux only, although only by twelve lines of code.
