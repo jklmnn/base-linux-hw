@@ -139,7 +139,7 @@ twoside
 		Linux however often supports them well and is the only choice for some of them.
 		It also comes with good debugging facilities which is an important part for driver development.
 		
-		The goal of this thesis is the combination of the advantages of both Linux and Genode.
+		The goal of this study is the combination of the advantages of both Linux and Genode.
 		While it already runs on Linux there is no support for hardware access and device drivers yet.
 		After stripping away its kernel drivers Linux still has a high complexity.
 		Despite this running them in the user space on Genode gains security through isolation while keeping the good platform support.
@@ -316,7 +316,7 @@ twoside
 		Some resources cannot be used since the Linux kernel doesn't provide them to the user space, for example memory mapped IO or direct memory access.
 		To develop and debug native Genode device drivers the kernel needs to act as a microkernel and provide access to these resources in Genode.
 		
-		Some of Genodes properties are important for the evaluation of this thesis and will be explained further.
+		Some of Genodes properties are important for the evaluation of this study and will be explained further.
 		One is the source code management which is based on so called repositories that can include multiple sets of software components.
 		The other is the session concept which provide typed interfaces between components and abstractions to platform specific code.
 		
@@ -352,7 +352,7 @@ twoside
 		Their semantics are equal to remote procedure calls.
 		To do an RPC call to a specific session a capability of the same type as the session has to be owned by the caller.
 		The core sessions include basic resources such as protection domains, RAM and CPU.
-		More important for this thesis they also provide hardware access abstractions for I/O memory, I/O ports and interrupts.
+		More important for this study they also provide hardware access abstractions for I/O memory, I/O ports and interrupts.
 		Since logging is an important part of every system it is also included here.
 		
 		As a specific setup can have multiple components that provide the same session types a routing needs to be done explicitly.
@@ -1377,7 +1377,7 @@ inline int lx_ioctl_irq(int fd, int irq)
 	
 	\chapter{Evaluation}
 	
-		The working state of Genodes device drivers is the evaluation metric that this thesis is measured against.
+		The working state of Genodes device drivers is the evaluation metric that this study is measured against.
 		The first part of this is getting an overview over the existing drivers and categorize them by their required resources.
 		Based on the implemented resources and the functionality of different drivers the state of each resource can be determined.
 		As microkernels are not only defined by their functionality but also their size the Linux kernels complexity is evaluated and compared to other supported microkernels.
@@ -1764,7 +1764,7 @@ inline int lx_ioctl_irq(int fd, int irq)
 	
 	\chapter{Conclusion}
 	
-		This thesis shows that it is possible to create a generic interface on Linux to run drivers in the user space.
+		This study shows that it is possible to create a generic interface on Linux to run drivers in the user space.
 		It also shows that this is possible to do this by using a component based user land, such as the Genode OS Framework \citep{genode}.
 		
 		Three basic hardware access mechanisms have been ported to Linux.
@@ -1791,7 +1791,7 @@ inline int lx_ioctl_irq(int fd, int irq)
 		
 		A further important point is the integration into Genodes build system.
 		While some of it has already been done it is still unfinished.
-		At the state in this thesis selecting between Genode on a bare Linux kernel and on the host system requires changes at multiple points.
+		At the state in this study selecting between Genode on a bare Linux kernel and on the host system requires changes at multiple points.
 		These are for example the build configuration and the Linux specific implementation of core.
 		Reducing this to a switch in the build configuration is required use the results of this theses productively.
 		
