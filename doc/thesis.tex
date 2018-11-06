@@ -1,38 +1,90 @@
 \documentclass[
 a4paper,
-12pt,
-notitlepage,
-parskip=half,
-DIV=11,
-]{scrbook}
+11pt,
+twoside
+]{report}
 
-\usepackage[utf8]{inputenx}
 \usepackage[T1]{fontenc}
-\usepackage{hyperref}
+\usepackage[hidelinks]{hyperref}
 \usepackage{graphicx}
 
 \usepackage[numbers]{natbib}
 \usepackage{cite}
 \usepackage[bottom]{footmisc}
+\usepackage[margin=2.5cm,inner=3cm,foot=1.5cm]{geometry}
 
+\usepackage[no-math]{fontspec}
 \usepackage{tikz}
 \usepackage{pgfplots}
 \usepackage{color, colortbl}
-\definecolor{LightGreen}{rgb}{0.83, 0.91, 0.83}
-\definecolor{LightYellow}{rgb}{1.0, 0.95, 0.8}
-\definecolor{LightRed}{HTML}{F8CECC}
+
+\usepackage{titlesec}
+\usepackage{xltxtra}
+\usepackage{lastpage}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[LE,RO]{\thepage\ of\ \pageref{LastPage}}
+\fancyfoot[RE,LO]{\includegraphics[height=2em]{Logo.pdf}}
+\renewcommand{\headrulewidth}{0pt}
+
+\makeatletter
+\renewcommand\chapter{\if@openright\cleardoublepage\else\clearpage\fi
+                    \thispagestyle{fancy}%
+                    \global\@topnum\z@
+                    \@afterindentfalse
+                    \secdef\@chapter\@schapter}
+\makeatother
+
+\definecolor{ComponolitGreen}{rgb}{0.0, 0.596, 0.267}
+\definecolor{ComponolitDarkGray}{HTML}{706f6f}
+
+\definecolor{LightGreen}{HTML}{009844}
+\definecolor{LightYellow}{HTML}{FFF15C}
+\definecolor{LightRed}{HTML}{F0AB4E}
 
 \definecolor{findOptimalPartition}{HTML}{D7191C}
 \definecolor{storeClusterComponent}{HTML}{FDAE61}
+
+\setsansfont[Color=ComponolitDarkGray]{Arimo}
+\setmainfont[Color=ComponolitDarkGray]{Arimo}
+\setmonofont[Color=ComponolitDarkGray]{Cousine}
+
+\newfontfamily\secfont[Color=ComponolitDarkGray]{Arimo Bold}
+
+\titleformat{\chapter}[display]{\Large\secfont}{\color{ComponolitGreen}\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titleformat*{\section}{\large\secfont}
+\titleformat*{\subsection}{\secfont}
+\titleformat*{\subsubsection}{\secfont}
 
 \input{genode-manual/manual/img/tikz-preamble.tex}
 \input{genode-manual/manual/img/tikz-common.tex}
 
 \renewcommand{\labelenumi}{R\arabic{enumi}}
 
+\setcounter{tocdepth}{1}
+
 \begin{document}
 	
+   \begin{titlepage}
+      \vspace{1.0cm}
+      \begin{tikzpicture}[remember picture,overlay]
+         \node[anchor=north east,inner sep=1.5cm] at (current page.north east) {\includegraphics[width=7cm]{Logo_Claim.pdf}};
+      \end{tikzpicture}
+      \par
+      \vspace{7cm}
+      {\Huge\noindent\textbf{Enabling Device Drivers on\\ Genode's base-linux}\\[0.5em]}
+      {\Large\noindent Johannes Kliemann (kliemann@componolit.com)}
+
+      \vfill
+      {\noindent\today\par}
+   \end{titlepage}
+
 	\tableofcontents
+
+   \setlength{\parskip}{0.5em}
+   \setlength{\parindent}{0em}
 	
 	\chapter{Introduction}
 		
@@ -241,7 +293,7 @@ DIV=11,
 		
 		\begin{figure}
 			\centering
-			\input{genode-manual/manual/img/app_specific_tcb.tikz}
+			\includegraphics{per_app_tcb.pdf}
 			\caption{Application based TCB \citep{genode}}
 			\label{fig:tcb_tree}
 		\end{figure}
