@@ -1,1 +1,3 @@
 thesis.pdf
+*.fdb_latexmk
+*.fls
